@@ -66,7 +66,7 @@ Use AgentOS when you need to:
 ### 3 commands to your first governed PR
 
 ```bash
-git clone https://github.com/saivedant169/AgentOS.git
+git clone https://github.com/rajveer100704/AgentOS.git
 cd AgentOS/starter-kit
 ./install-pr-writer.sh
 ```
@@ -183,7 +183,7 @@ type ActionEnvelope struct {
 ### One-click gateway demo
 
 ```bash
-git clone https://github.com/saivedant169/AgentOS.git
+git clone https://github.com/rajveer100704/AgentOS.git
 cd AgentOS
 make demo-local
 ```
@@ -191,7 +191,7 @@ make demo-local
 ### Option 1: Docker Compose
 
 ```bash
-git clone https://github.com/saivedant169/AgentOS.git
+git clone https://github.com/rajveer100704/AgentOS.git
 cd AgentOS
 docker compose -f deployments/docker-compose.yaml up
 ```
@@ -205,7 +205,7 @@ Putting nginx or Caddy in front for TLS, SSE buffering, and admin-port isolation
 brew install go
 
 # Clone and build
-git clone https://github.com/saivedant169/AgentOS.git
+git clone https://github.com/rajveer100704/AgentOS.git
 cd AgentOS
 make build
 
