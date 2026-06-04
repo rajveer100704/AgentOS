@@ -1,0 +1,36 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # AgentOS Control Plane — gateway metrics (existing)
+  - job_name: "agentos-local"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets:
+          - "host.docker.internal:8081"
+
+  # AgentOS Control Plane — inside Docker Compose stack
+  - job_name: 'agentos_gateway'
+    static_configs:
+      - targets: ['agentos:8081']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # AgentOS Edge Proxy — uses same /metrics endpoint (shared Prometheus registry)
+  # Separate job with metric_relabel to isolate edge metrics for dashboards.
+  - job_name: 'agentos_edge'
+    static_configs:
+      - targets: ['agentos:8081']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'aegisflow_edge_.*|aegisflow_circuit_breaker_.*'
+        action: keep
+
+  # Jaeger operational metrics
+  - job_name: 'jaeger'
+    static_configs:
+      - targets: ['jaeger:14269']
+    scrape_interval: 30s
