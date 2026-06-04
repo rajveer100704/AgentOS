@@ -3,7 +3,7 @@
 # AgentOS Setup Script
 # Run this once after cloning the repo to install all dependencies.
 #
-# Usage: ./scripts/setup.sh
+# Usage: ./scripts/tooling/setup.sh
 #
 
 set -e
@@ -36,8 +36,8 @@ echo -e "   ${GREEN}Dependencies downloaded${NC}"
 # 3. Build
 echo ""
 echo "3. Building AgentOS..."
-go build -o bin/AgentOS ./cmd/AgentOS
-echo -e "   ${GREEN}Binary built: bin/AgentOS${NC}"
+go build -o bin/agentos ./cmd/agentos
+echo -e "   ${GREEN}Binary built: bin/agentos${NC}"
 
 # 4. Tests
 echo ""
@@ -95,7 +95,7 @@ echo "To start AgentOS:"
 echo "  make run"
 echo ""
 echo "To run the full demo:"
-echo "  ./scripts/full_demo.sh"
+echo "  ./scripts/demos/full_demo.sh"
 echo ""
 echo "To run with Docker:"
 echo "  make docker-up"

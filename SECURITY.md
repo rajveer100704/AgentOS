@@ -53,7 +53,7 @@ These are the parts of the project where security reports are most useful:
 
 These are not security vulnerabilities and should be filed as regular issues or PRs:
 
-- Bugs in the mock provider (`internal/provider/mock.go`) or the demo mock MCP server (`scripts/mock-mcp-server.js`). These are for testing and demos, not production.
+- Bugs in the mock provider (`internal/provider/mock.go`) or the demo mock MCP server (`scripts/tooling/mock-mcp-server.js`). These are for testing and demos, not production.
 - Content quality issues in the policy packs themselves (for example, a pack being too restrictive). Open an issue.
 - DoS from unrealistic load. If you can show a realistic DoS path with the single Go binary under normal limits, that is in scope. If you are running 1M RPS from a single client without rate limits, that is not.
 - Third-party service issues (GitHub API, AWS STS, Vault). Report those to the upstream vendor.

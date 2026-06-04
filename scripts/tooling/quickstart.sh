@@ -4,7 +4,7 @@
 
 set -e
 
-PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$PROJECT_DIR"
 
 echo "Starting AgentOS..."
@@ -17,10 +17,10 @@ done
 echo "AgentOS is ready!"
 echo ""
 echo "Run the governance demo:"
-echo "  ./scripts/demo.sh"
+echo "  ./scripts/demos/demo.sh"
 echo ""
 echo "Run the attack demo:"
-echo "  ./scripts/attack_demo.sh"
+echo "  ./scripts/demos/attack_demo.sh"
 echo ""
 echo "Admin dashboard: http://localhost:8081/dashboard"
 echo "Gateway API:     http://localhost:8080"

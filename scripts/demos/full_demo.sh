@@ -19,7 +19,7 @@ YELLOW='\033[1;33m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$PROJECT_DIR"
 
 pause() {
@@ -90,8 +90,8 @@ pause
 header "STEP 1: Build AgentOS"
 
 echo "Building..."
-go build -o bin/AgentOS ./cmd/AgentOS
-success "Binary built: bin/AgentOS"
+go build -o bin/agentos ./cmd/agentos
+success "Binary built: bin/agentos"
 
 pause
 
@@ -112,12 +112,12 @@ pause
 header "STEP 3: Start AgentOS"
 
 # Kill any existing instance
-pkill -f "bin/AgentOS" 2>/dev/null || true
+pkill -f "bin/agentos" 2>/dev/null || true
 lsof -ti:8080 2>/dev/null | xargs kill -9 2>/dev/null || true
 lsof -ti:8081 2>/dev/null | xargs kill -9 2>/dev/null || true
 sleep 1
 
-./bin/AgentOS --config configs/AgentOS.yaml > /tmp/AgentOS_demo.log 2>&1 &
+./bin/agentos --config configs/agentos.yaml > /tmp/AgentOS_demo.log 2>&1 &
 AEGIS_PID=$!
 sleep 2
 

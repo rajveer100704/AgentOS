@@ -10,7 +10,7 @@ set -euo pipefail
 #   BENCH_P99_THRESHOLD_MS=250
 #   BENCH_RESULTS_FILE=benchmark-results.txt
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 REQUESTS="${BENCH_REQUESTS:-300}"
 CONCURRENCY="${BENCH_CONCURRENCY:-20}"
 P99_THRESHOLD_MS="${BENCH_P99_THRESHOLD_MS:-250}"
