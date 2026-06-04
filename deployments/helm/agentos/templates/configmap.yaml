@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  labels:
+    app: agentos
+    release: {{ .Release.Name }}
+data:
+  agentos.yaml: |
+    server:
+      host: "0.0.0.0"
+      port: {{ .Values.service.gateway.port }}
+      admin_port: {{ .Values.service.admin.port }}
+    providers:
+      - name: "mock"
+        type: "mock"
+        enabled: true
+        default: true
+    routes:
+      - match:
+          model: "*"
+        providers: ["mock"]
+        strategy: "priority"
+    tenants:
+      - id: {{ .Values.config.tenant.id | default "default" | quote }}
+        name: {{ .Values.config.tenant.name | default "Default Tenant" | quote }}
+        api_keys:
+          {{- if .Values.config.tenant.apiKeySecret.enabled }}
+          - key_env: {{ .Values.config.tenant.apiKeySecret.envName | default "AGENTOS_DEFAULT_API_KEY" | quote }}
+            role: {{ .Values.config.tenant.role | default "admin" | quote }}
+          {{- else }}
+          - key: {{ .Values.config.tenant.apiKey | default "aegis-test-default-001" | quote }}
+            role: {{ .Values.config.tenant.role | default "admin" | quote }}
+          {{- end }}
+        rate_limit:
+          requests_per_minute: {{ .Values.config.tenant.rateLimit.requestsPerMinute | default 60 }}
+          tokens_per_minute: {{ .Values.config.tenant.rateLimit.tokensPerMinute | default 100000 }}
+        allowed_models:
+          - "*"
+    rate_limit:
+      backend: "memory"
+    policies:
+      input:
+        - name: "block-jailbreak"
+          type: "keyword"
+          action: "block"
+          keywords:
+            - "ignore previous instructions"
+            - "DAN mode"
+      output: []
+    telemetry:
+      enabled: false
+    cache:
+      enabled: true
+      backend: "memory"
+      ttl: 5m
+      max_size: 1000
+    logging:
+      level: "info"
+      format: "json"

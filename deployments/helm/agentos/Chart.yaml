@@ -1,0 +1,15 @@
+apiVersion: v2
+name: agentos
+description: Production-Grade AI Governance, Edge Proxy & Observability Platform
+type: application
+version: 0.8.0
+appVersion: "0.8.0"
+keywords:
+  - ai-gateway
+  - llm
+  - openai
+  - observability
+  - policy-engine
+maintainers:
+  - name: saivedant169
+    url: https://github.com/saivedant169

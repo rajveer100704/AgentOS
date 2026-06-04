@@ -1,0 +1,80 @@
+replicaCount: 1
+
+image:
+  repository: saivedant169/agentos
+  tag: "0.8.0"
+  pullPolicy: IfNotPresent
+
+service:
+  gateway:
+    type: ClusterIP
+    port: 8080
+  admin:
+    type: ClusterIP
+    port: 8081
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: agentos.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 64Mi
+
+config:
+  # Inline agentos.yaml config
+  server:
+    host: "0.0.0.0"
+    port: 8080
+    admin_port: 8081
+  tenant:
+    id: default
+    name: Default Tenant
+    role: admin
+    # Demo key for local chart trials. Use apiKeySecret for production.
+    apiKey: aegis-test-default-001
+    rateLimit:
+      requestsPerMinute: 60
+      tokensPerMinute: 100000
+    apiKeySecret:
+      enabled: false
+      name: ""
+      key: api-key
+      envName: AGENTOS_DEFAULT_API_KEY
+
+redis:
+  enabled: true
+  image: redis:7-alpine
+
+postgresql:
+  enabled: false
+  image: postgres:16-alpine
+  password: agentos
+
+serviceMonitor:
+  enabled: false
+  interval: 30s
+
+operator:
+  enabled: false
+  image:
+    repository: saivedant169/agentos-operator
+    tag: "latest"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+crds:
+  install: true

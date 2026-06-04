@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-agentos
+  labels:
+    app: agentos
+    release: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: agentos
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: agentos
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: agentos
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: AGENTOS_CONFIG
+              value: /etc/agentos/agentos.yaml
+            {{- if .Values.config.tenant.apiKeySecret.enabled }}
+            - name: {{ .Values.config.tenant.apiKeySecret.envName | default "AGENTOS_DEFAULT_API_KEY" | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "config.tenant.apiKeySecret.name is required when apiKeySecret.enabled=true" .Values.config.tenant.apiKeySecret.name | quote }}
+                  key: {{ .Values.config.tenant.apiKeySecret.key | default "api-key" | quote }}
+            {{- end }}
+          ports:
+            - name: gateway
+              containerPort: {{ .Values.service.gateway.port }}
+              protocol: TCP
+            - name: admin
+              containerPort: {{ .Values.service.admin.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: gateway
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: gateway
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/agentos
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ .Release.Name }}-config
