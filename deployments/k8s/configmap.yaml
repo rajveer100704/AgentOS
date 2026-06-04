@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agentos-config
+  namespace: default
+data:
+  agentos.yaml: |
+    server:
+      host: "0.0.0.0"
+      port: 8080
+      admin_port: 8081
+      read_timeout: 10s
+      write_timeout: 10s
+      graceful_shutdown: 15s
+
+    edge_proxy:
+      enabled: true
+      listen_addr: ":8443"
+      h2c_addr: ":8444"
+      http3_enabled: false
+      tls_cert_file: ""  # Empty triggers auto-generation
+      tls_key_file: ""
+      load_shed:
+        enabled: true
+        cpu_threshold_pct: 80.0
+        max_queue_depth: 500
+        priority_header: "X-Priority"
+      upstreams:
+        - name: gateway
+          prefix: "/api"
+          target: "http://localhost:8080"
+          strip_prefix: false
+          timeout: 120s
+          circuit_breaker:
+            threshold: 5
+            reset_after: "30s"
+        - name: admin
+          prefix: "/admin"
+          target: "http://localhost:8081"
+          strip_prefix: false
+          timeout: 30s
+          circuit_breaker:
+            threshold: 10
+            reset_after: "15s"
+
+    telemetry:
+      enabled: true
+      exporter: "jaeger"
+      otlp:
+        endpoint: "jaeger-collector:4317"
+        insecure: true
+      metrics:
+        enabled: true
+        path: "/metrics"
+
+    logging:
+      level: "info"
+      format: "json"
+
+    cache:
+      enabled: true
+      backend: "memory"
+      ttl: "5m"
+      max_size: 1000
