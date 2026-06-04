@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agentos-operator
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agentos-operator
+  template:
+    metadata:
+      labels:
+        app: agentos-operator
+    spec:
+      serviceAccountName: agentos-operator
+      containers:
+        - name: operator
+          image: saivedant169/agentos-operator:latest
+          imagePullPolicy: IfNotPresent
+          args:
+            - --namespace=default
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi

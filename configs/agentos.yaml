@@ -1,0 +1,240 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+  admin_port: 8081
+  read_timeout: 30s
+  write_timeout: 120s
+  graceful_shutdown: 10s
+  max_body_size: 10485760
+
+providers:
+  - name: "mock"
+    type: "mock"
+    enabled: true
+    default: true
+    config:
+      latency: "100ms"
+
+  - name: "openai"
+    type: "openai"
+    enabled: true
+    base_url: "https://api.openai.com/v1"
+    api_key_env: "OPENAI_API_KEY"
+    models:
+      - "gpt-4o"
+      - "gpt-4o-mini"
+    timeout: 60s
+    max_retries: 2
+
+  - name: "anthropic"
+    type: "anthropic"
+    enabled: false
+    base_url: "https://api.anthropic.com/v1"
+    api_key_env: "ANTHROPIC_API_KEY"
+    models:
+      - "claude-sonnet-4-20250514"
+    timeout: 60s
+
+  - name: "ollama"
+    type: "ollama"
+    enabled: true
+    base_url: "http://localhost:11434"
+    models:
+      - "qwen2.5:0.5b"
+
+routes:
+  - match:
+      model: "qwen*"
+    providers: ["ollama", "mock"]
+    strategy: "priority"
+
+  - match:
+      model: "gpt-*"
+    providers: ["openai", "mock"]
+    strategy: "priority"
+
+  - match:
+      model: "claude-*"
+    providers: ["anthropic", "mock"]
+    strategy: "priority"
+
+  - match:
+      model: "*"
+    providers: ["ollama", "mock"]
+    strategy: "priority"
+
+# NOTE: These are LOCAL-ONLY demo keys for development/testing.
+# They have no value outside this local server. Replace with your own keys in production.
+tenants:
+  - id: "default"
+    name: "Default Tenant"
+    api_keys:
+      - key: "aegis-test-default-001"
+        role: "admin"
+      - "aegis-test-default-002"
+    rate_limit:
+      requests_per_minute: 10
+      tokens_per_minute: 100000
+    allowed_models:
+      - "*"
+
+  - id: "premium"
+    name: "Premium Tenant"
+    api_keys:
+      - key: "aegis-test-premium-001"
+        role: "operator"
+    rate_limit:
+      requests_per_minute: 10
+      tokens_per_minute: 500000
+    allowed_models:
+      - "*"
+
+rate_limit:
+  backend: "memory"
+  redis:
+    address: "localhost:6379"
+    password: ""
+    db: 0
+
+policies:
+  input:
+    - name: "block-jailbreak"
+      type: "keyword"
+      action: "block"
+      keywords:
+        - "ignore previous instructions"
+        - "ignore all instructions"
+        - "ignore above instructions"
+        - "ignore your instructions"
+        - "disregard previous instructions"
+        - "disregard all instructions"
+        - "disregard your instructions"
+        - "forget your instructions"
+        - "forget previous instructions"
+        - "override your instructions"
+        - "bypass your instructions"
+        - "DAN mode"
+        - "do anything now"
+        - "jailbreak"
+        - "developer mode"
+        - "you are now"
+        - "act as an unrestricted"
+        - "pretend you have no restrictions"
+        - "pretend you are not"
+        - "you have been freed"
+        - "ignore safety"
+        - "ignore content policy"
+        - "ignore ethical guidelines"
+        - "no restrictions mode"
+        - "unrestricted mode"
+        - "explosives"
+    - name: "pii-detection"
+      type: "pii"
+      action: "warn"
+      patterns:
+        - "ssn"
+        - "email"
+        - "credit_card"
+  output:
+    - name: "content-filter"
+      type: "keyword"
+      action: "log"
+      keywords: []
+
+telemetry:
+  enabled: true
+  # exporter: "stdout"     # log spans to stdout (default, no infra required)
+  # exporter: "jaeger"     # OTLP gRPC to Jaeger (recommended for production)
+  exporter: "stdout"
+  otlp:
+    endpoint: "localhost:4317"   # Jaeger OTLP gRPC port
+    insecure: true               # set false in production with TLS
+  metrics:
+    enabled: true
+    path: "/metrics"
+
+logging:
+  level: "info"
+  format: "json"
+
+cache:
+  enabled: true
+  backend: "memory"
+  ttl: 5m
+  max_size: 1000
+
+webhook:
+  url: ""
+
+database:
+  enabled: false
+  conn_string: "postgres://agentos:agentos@localhost:5432/agentos?sslmode=disable"
+
+admin:
+  token: ""
+
+aliases:
+  models:
+    fast: "gpt-4o-mini"
+    smart: "gpt-4o"
+    local: "qwen2.5:0.5b"
+    cheap: "mock"
+
+capability:
+  enabled: false
+  # signing_key: "hex-encoded-32-byte-hmac-key"
+  # default_ttl: 5m
+
+transform:
+  default_system_prompt: ""
+  system_prompt_prefix: ""
+  system_prompt_suffix: ""
+
+# ──────────────────────────────────────────────────────────────
+# AgentOS Edge Proxy (Phase 3)
+# Set enabled: true to activate the TLS + HTTP/2 edge layer.
+# ──────────────────────────────────────────────────────────────
+edge_proxy:
+  enabled: true             # set true to activate AgentOS Edge
+  listen_addr: ":8443"       # TLS listener (HTTP/2 via ALPN h2)
+  h2c_addr: ":8444"          # HTTP/2 cleartext (internal traffic)
+  http3_enabled: false       # QUIC/HTTP3 — enable after HTTP/2 is stable
+  http3_addr: ":8445"        # UDP port for QUIC
+
+  # TLS certificate — leave empty to auto-generate a self-signed cert
+  tls_cert_file: ""          # /path/to/tls.crt  (PEM)
+  tls_key_file: ""           # /path/to/tls.key  (PEM)
+
+  # Connection pool
+  max_idle_conns: 100
+  idle_conn_timeout: 90s
+  dial_timeout: 10s
+
+  # TraceStore ring buffer size (shared with Observatory dashboard)
+  trace_store_size: 500
+
+  # Adaptive load shedding — CPU-aware request dropping
+  load_shed:
+    enabled: true
+    cpu_threshold_pct: 80.0  # shed low-priority requests above 80% CPU
+    max_queue_depth: 500      # shed all non-critical when active > 500
+    priority_header: "X-Priority"  # requests with value "critical" are never shed
+
+  # Path-prefix → upstream routing
+  # Defaults are auto-configured if this section is omitted.
+  upstreams:
+    - name: "gateway"
+      prefix: "/api"
+      target: "http://localhost:8080"
+      strip_prefix: true
+      circuit_breaker_threshold: 5
+      circuit_breaker_reset_after: 30s
+      timeout: 120s
+
+    - name: "admin"
+      prefix: "/admin"
+      target: "http://localhost:8081"
+      strip_prefix: true
+      circuit_breaker_threshold: 10
+      circuit_breaker_reset_after: 15s
+      timeout: 30s

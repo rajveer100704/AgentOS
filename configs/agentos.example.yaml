@@ -1,0 +1,553 @@
+# AgentOS Configuration Reference
+# Copy this file to agentos.yaml and modify as needed.
+
+# Server settings
+server:
+  host: "0.0.0.0"              # Bind address
+  port: 8080                    # Gateway API port
+  admin_port: 8081              # Admin API port (health, metrics, usage)
+  read_timeout: 30s             # HTTP read timeout
+  write_timeout: 120s           # HTTP write timeout (long for streaming)
+  graceful_shutdown: 10s        # Graceful shutdown timeout
+  max_body_size: 10485760       # Max request body size in bytes (10MB)
+
+# Provider definitions
+# Each provider needs a unique name and a type.
+# Supported types: mock, openai, anthropic, ollama
+providers:
+  - name: "mock"                # Unique identifier
+    type: "mock"                # Provider type
+    enabled: true               # Enable/disable this provider
+    default: true               # Use as default fallback
+    config:
+      latency: "100ms"          # Simulated response latency (mock only)
+
+  - name: "openai"
+    type: "openai"
+    enabled: false              # Set to true and provide API key to use
+    base_url: "https://api.openai.com/v1"
+    api_key_env: "OPENAI_API_KEY"   # Environment variable containing the API key
+    models:                     # Models available from this provider
+      - "gpt-4o"
+      - "gpt-4o-mini"
+    timeout: 60s                # Request timeout
+    max_retries: 2              # Max retries on failure
+
+  - name: "anthropic"
+    type: "anthropic"
+    enabled: false
+    base_url: "https://api.anthropic.com/v1"
+    api_key_env: "ANTHROPIC_API_KEY"
+    models:
+      - "claude-sonnet-4-20250514"
+    timeout: 60s
+
+  - name: "ollama"
+    type: "ollama"
+    enabled: false
+    base_url: "http://localhost:11434"
+    models:
+      - "llama3"
+
+# Routes: map model patterns to provider chains
+# The first matching route is used. Use glob patterns for model matching.
+routes:
+  - match:
+      model: "gpt-*"           # Glob pattern for model names
+    providers: ["openai", "mock"]   # Provider fallback order
+    strategy: "priority"        # Routing strategy: priority | round-robin
+
+  - match:
+      model: "claude-*"
+    providers: ["anthropic", "mock"]
+    strategy: "priority"
+
+  - match:
+      model: "*"               # Catch-all route
+    providers: ["mock"]
+    strategy: "priority"
+
+# Tenant definitions
+# Each tenant has API keys and rate limits.
+# API keys can be plain strings (backward-compatible, defaults to "viewer" role)
+# or objects with "key" and "role" fields. Supported roles: admin, operator, viewer.
+tenants:
+  - id: "default"
+    name: "Default Tenant"
+    api_keys:
+      - key: "aegis-test-default-001"
+        role: "admin"            # Structured key with explicit role
+      - "aegis-test-default-002" # Plain string key (defaults to "viewer")
+    rate_limit:
+      requests_per_minute: 60
+      tokens_per_minute: 100000
+    allowed_models:
+      - "*"                    # Allow all models
+
+  - id: "premium"
+    name: "Premium Tenant"
+    api_keys:
+      - key: "aegis-test-premium-001"
+        role: "operator"
+    rate_limit:
+      requests_per_minute: 300
+      tokens_per_minute: 500000
+    allowed_models:
+      - "*"
+
+# Load shedding
+# Protects the gateway from overload with priority-based admission control.
+# Priority is read from the X-Priority header ("high", "normal", "low").
+# High priority: admitted directly up to max_concurrent, never queued.
+# Normal priority: queued when at capacity, shed when queue is full.
+# Low priority: shed immediately at 80% capacity.
+load_shed:
+  enabled: false
+  max_concurrent: 100            # Hard limit on simultaneous in-flight requests
+  queue_size: 50                 # Max requests waiting in queue
+  queue_timeout: 10s             # Max time a queued request waits before 503
+
+# Rate limiting backend
+rate_limit:
+  backend: "memory"            # memory (default) | redis
+  redis:                       # Only used when backend is "redis"
+    address: "localhost:6379"
+    password: ""
+    db: 0
+
+# Policy engine
+# Input policies run before the request reaches a provider.
+# Output policies run on the provider's response.
+# Actions: block (reject request), warn (log and allow), log (record only)
+#
+# governance_mode controls behavior when a policy filter encounters an error:
+#   "governance" (default) — fail-closed: filter errors block the request
+#   "permissive"           — fail-open: filter errors are logged, request passes
+# break_glass temporarily overrides governance mode to permissive (for emergencies).
+policies:
+  governance_mode: "governance"  # "governance" (fail-closed) or "permissive" (fail-open)
+  break_glass: false             # set true to temporarily override to permissive
+  input:
+    - name: "block-jailbreak"
+      type: "keyword"           # keyword | regex | pii
+      action: "block"
+      keywords:
+        - "ignore previous instructions"
+        - "ignore all instructions"
+        - "DAN mode"
+
+    - name: "pii-detection"
+      type: "pii"
+      action: "warn"
+      patterns:                 # PII types: ssn, email, credit_card, phone
+        - "ssn"
+        - "email"
+        - "credit_card"
+
+  output:
+    - name: "content-filter"
+      type: "keyword"
+      action: "log"
+      keywords: []              # Add keywords to filter from responses
+
+# Telemetry
+telemetry:
+  enabled: true
+  exporter: "stdout"           # stdout | otlp
+  otlp:
+    endpoint: "localhost:4317"
+    insecure: true
+  metrics:
+    enabled: true
+    path: "/metrics"           # Prometheus metrics path on admin port
+
+# Cost Optimization
+# Analyzes usage patterns and recommends cheaper model alternatives.
+cost_optimization:
+  enabled: false
+  min_quality_tolerance: 10    # accept up to 10% quality drop
+  min_request_volume: 10       # minimum daily requests to generate recommendation
+
+# Logging
+logging:
+  level: "info"                # debug | info | warn | error
+  format: "json"               # json | text
+
+# Request/Response Transformation
+transform:
+  system_prompt_prefix: ""
+  system_prompt_suffix: ""
+  default_system_prompt: ""
+  response:
+    strip_pii: false                # Replace emails, phones, SSNs, credit cards with placeholders
+    content_prefix: ""              # Prepend to all response content
+    content_suffix: ""              # Append to all response content
+    replacements: {}                # Literal string replacements in responses
+
+# Per-tenant transforms (in tenants section):
+# tenants:
+#   - id: acme-corp
+#     name: Acme Corp
+#     api_keys:
+#       - key: "acme-key-1"
+#         role: operator
+#     transform:
+#       default_system_prompt: "You are Acme Corp's AI assistant. Be professional."
+#       system_prompt_suffix: "Always mention our return policy."
+
+# Admin API settings
+admin:
+  token: ""                       # Optional bearer token for admin endpoints
+  graphql:
+    enabled: false                # Enable the GraphQL admin API at /admin/v1/graphql
+
+# WebSocket endpoint
+# Enables persistent WebSocket connections at /v1/ws for chat completions.
+# Clients authenticate via ?api_key= query param or an initial "auth" message.
+websocket:
+  enabled: false
+  ping_interval: 30s             # Server-to-client ping interval for keepalive
+
+# Response cache
+cache:
+  enabled: true
+  backend: "memory"            # memory (default) | redis
+  ttl: 5m
+  max_size: 1000
+  semantic:
+    enabled: false
+    provider: "openai"          # "openai" or any OpenAI-compatible API
+    base_url: ""                # defaults to https://api.openai.com
+    api_key: "${OPENAI_API_KEY}"
+    model: "text-embedding-3-small"
+    threshold: 0.92             # cosine similarity threshold (0.0-1.0)
+    max_size: 1000              # max cached embeddings
+
+# Tool-level policies for agent action governance
+tool_policies:
+  enabled: true
+  default_decision: "block"          # default when no rule matches: allow | review | block
+  rules:
+    # GitHub - read operations allowed, writes need review, merges blocked
+    - protocol: "git"
+      tool: "github.list_*"
+      decision: "allow"
+    - protocol: "git"
+      tool: "github.create_branch"
+      decision: "allow"
+    - protocol: "git"
+      tool: "github.create_pull_request"
+      decision: "review"
+    - protocol: "git"
+      tool: "github.merge_pull_request"
+      decision: "block"
+
+    # Shell - safe commands allowed, dangerous blocked
+    - protocol: "shell"
+      tool: "shell.exec"
+      target: "pytest"
+      decision: "allow"
+    - protocol: "shell"
+      tool: "shell.exec"
+      target: "rm *"
+      decision: "block"
+    - protocol: "shell"
+      tool: "shell.exec"
+      decision: "review"
+
+    # SQL - reads allowed, writes need review, drops blocked
+    - protocol: "sql"
+      tool: "*"
+      capability: "read"
+      decision: "allow"
+    - protocol: "sql"
+      tool: "*"
+      capability: "write"
+      decision: "review"
+    - protocol: "sql"
+      tool: "*"
+      capability: "delete"
+      decision: "block"
+
+    # Block all delete operations across all protocols
+    - protocol: "*"
+      tool: "*"
+      capability: "delete"
+      decision: "block"
+
+# Shell command interceptor
+# Intercepts shell commands from agents, evaluates them against tool policies,
+# and records them in the evidence chain before execution.
+shell_gate:
+  enabled: false
+  block_dangerous: true            # Auto-block known dangerous commands (rm -rf /, fork bombs, etc.)
+  default_decision: "block"        # Decision for commands not matching any rule: allow | review | block
+
+# SQL query interceptor
+# Intercepts SQL queries from agents, classifies by operation type,
+# evaluates against tool policies, and records in the evidence chain.
+sql_gate:
+  enabled: false
+  block_dangerous: true             # Auto-block DROP, TRUNCATE, DELETE/UPDATE without WHERE
+  default_decision: "block"         # Decision for queries not matching any rule: allow | review | block
+
+# GitHub operation interceptor
+# Intercepts GitHub API calls from agents, classifies operations by risk level
+# (low/medium/high/critical), evaluates against tool policies, and records in
+# the evidence chain. Works independently of MCP — intercepts direct API calls.
+github_gate:
+  enabled: false
+  default_decision: "block"         # Decision for operations not matching any rule: allow | review | block
+
+# Task-scoped credential broker
+# Issues short-lived, task-scoped credentials instead of sharing full user tokens.
+credentials:
+  enabled: false
+  providers:
+    - name: "fallback-static"
+      type: "static"                    # Wraps a pre-configured token (degraded mode)
+      token: "${STATIC_FALLBACK_TOKEN}" # Token value (use env var reference)
+      default_ttl: 30m                  # Credential lifetime
+
+    - name: "github"
+      type: "github_app"               # Issues GitHub App installation access tokens
+      github_app_id: 123456
+      github_key_path: "/etc/agentos/github-app.pem"
+      github_install_id: 7890123
+      default_ttl: 1h                  # Max 1 hour for GitHub App tokens
+
+    - name: "vault-db"
+      type: "vault"                     # Issues short-lived DB creds via Vault database secrets engine
+      vault_addr: "https://vault.example.com"
+      vault_token: "${VAULT_TOKEN}"     # Vault authentication token (use env var reference)
+      vault_secret_path: "database"     # Vault mount path for the database secrets engine
+      default_ttl: 30m                  # Credential lifetime (capped by Vault lease)
+
+    - name: "aws-agent-role"
+      type: "aws_sts"                   # Issues short-lived AWS creds via STS AssumeRole
+      aws_role_arn: "arn:aws:iam::123456789012:role/AgentOSAgentRole"
+      aws_region: "us-east-1"           # STS endpoint region
+      aws_external_id: ""               # Optional external ID for cross-account trust
+      default_ttl: 1h                   # Session duration (min 15m, max 12h)
+
+# HTTP API interceptor proxy
+# Acts as a reverse proxy that intercepts HTTP API calls from agents to external
+# services, evaluates them against tool policies, and records in the evidence chain.
+http_gate:
+  enabled: false
+  port: 8083
+  services:
+    - name: "stripe"
+      upstream_url: "https://api.stripe.com"
+      path_prefix: "/stripe"
+    - name: "slack"
+      upstream_url: "https://slack.com/api"
+      path_prefix: "/slack"
+
+# Task Manifests & Intent-to-Execution Drift Detection
+# Agents declare what they intend to do via a TaskManifest. AgentOS then
+# detects when actual execution drifts from the declared intent.
+manifests:
+  enabled: true
+  default_expiration: "1h"           # How long manifests are valid by default
+  default_risk_tier: "medium"        # low, medium, high
+
+# Execution sandboxes
+# Architectural safety constraints that go beyond regex pattern matching.
+# Each sandbox enforces structural rules on what agents can do.
+sandbox:
+  # Shell command sandbox
+  shell:
+    allowed_binaries:               # Only these binaries can run (empty = no restriction)
+      - "ls"
+      - "cat"
+      - "grep"
+      - "find"
+      - "git"
+      - "curl"
+      - "jq"
+    blocked_binaries:               # These binaries are always blocked
+      - "rm"
+      - "dd"
+      - "mkfs"
+      - "shutdown"
+      - "reboot"
+    allowed_paths:                  # Filesystem access restricted to these directories
+      - "/home/agent/workspace"
+      - "/tmp"
+    blocked_paths:                  # These paths are always blocked
+      - "/etc/shadow"
+      - "/etc/passwd"
+      - "/root"
+    network_policy:
+      allow_egress: false           # Default: no outbound network access
+      allowed_hosts:                # If egress allowed, only these hosts
+        - "api.github.com"
+      blocked_hosts:                # Always blocked
+        - "metadata.google.internal"
+        - "169.254.169.254"
+      blocked_ports:                # Always blocked ports
+        - 22
+        - 3389
+    max_duration: "30s"             # Kill command after this duration
+    max_output_bytes: 1048576       # Cap output to 1MB
+    env_redactions:                 # Environment variables to redact
+      - "AWS_SECRET_*"
+      - "GITHUB_TOKEN"
+      - "DATABASE_PASSWORD"
+      - "*_API_KEY"
+
+  # SQL query sandbox
+  sql:
+    read_only: false                # Force read-only mode (only SELECTs allowed)
+    allowed_schemas:                # Restrict to these schemas (empty = no restriction)
+      - "public"
+      - "app"
+    blocked_tables:                 # These tables are always blocked
+      - "secrets"
+      - "credentials"
+      - "api_keys"
+    max_rows_return: 1000           # Cap SELECT results
+    block_ddl: true                 # Block CREATE/ALTER/DROP/TRUNCATE
+    block_grant: true               # Block GRANT/REVOKE
+    require_where: true             # DELETE/UPDATE must have WHERE clause
+
+  # HTTP request sandbox
+  http:
+    allowed_hosts:                  # Only these hosts (empty = no restriction)
+      - "api.stripe.com"
+      - "*.slack.com"
+    blocked_hosts:                  # Always blocked
+      - "*.internal.corp"
+      - "metadata.google.internal"
+      - "169.254.169.254"
+    allowed_methods:                # Only these HTTP methods
+      - "GET"
+      - "POST"
+    max_payload_bytes: 1048576      # Cap request body to 1MB
+    blocked_paths:                  # Path patterns always blocked
+      - "/admin"
+      - "/internal"
+    require_https: true             # Block plain HTTP requests
+
+  # Git/GitHub sandbox
+  git:
+    allowed_repos:                  # Glob patterns for allowed repos
+      - "myorg/*"
+    allowed_branches:               # Branches the agent can write to
+      - "agent/*"
+      - "bot/*"
+    protected_paths:                # Files that cannot be modified
+      - ".github/workflows/*"
+      - "Makefile"
+      - "go.mod"
+      - "go.sum"
+    block_force_push: true          # Cannot force push
+    block_main_merge: true          # Cannot merge to main/master
+    block_workflow_edit: true        # Cannot edit workflow files
+
+# Resource-level policies
+# Typed, hierarchical rules that understand what resource is being touched,
+# at what scope, in what environment. Replaces flat tool-name matching with
+# resource-aware policy evaluation.
+#
+# Rule evaluation:
+#   - Rules sorted by priority (lower number = higher priority)
+#   - Deny overrides: if any matching rule blocks, the action is blocked
+#   - Environment inheritance: prod rules inherit to staging unless overridden
+#   - Sensitivity threshold: matches resources at or above the given level
+resource_policies:
+  enabled: false
+  default_decision: "block"         # "allow", "review", "block"
+  rules:
+    # Block all delete operations in production
+    - environment: "prod"
+      verb: "delete"
+      decision: "block"
+      priority: 1
+
+    # Require review for confidential data access
+    - sensitivity: "confidential"
+      verb: "read"
+      decision: "review"
+      priority: 10
+
+    # Allow read access to GitHub repos in dev
+    - resource_type: "repo"
+      provider: "github"
+      environment: "dev"
+      verb: "read"
+      decision: "allow"
+      priority: 20
+
+    # Block all access to production databases
+    - resource_type: "database"
+      provider: "postgres"
+      environment: "prod"
+      decision: "block"
+      priority: 5
+
+    # Allow read on specific path pattern
+    - resource_type: "table"
+      provider: "postgres"
+      path_pattern: "mydb/public/*"
+      environment: "dev"
+      verb: "read"
+      decision: "allow"
+      priority: 30
+
+# Approval integration settings
+# Send approval requests to GitHub PR comments and/or Slack channels.
+approval_integrations:
+  timeout: 30m                    # Auto-deny pending approvals after this duration
+  github:
+    enabled: false
+    token: ""                     # GitHub personal access token or app token
+    repo: "myorg/myrepo"         # owner/repo to post PR comments on
+  slack:
+    enabled: false
+    webhook_url: ""              # Slack incoming webhook URL
+
+# Enterprise Identity — org/team/project hierarchy with separation of duties
+identity:
+  enabled: true
+  organizations:
+    - id: "acme"
+      name: "Acme Corp"
+      teams:
+        - id: "platform"
+          name: "Platform Engineering"
+          projects:
+            - id: "gateway"
+              name: "AI Gateway"
+              environments:
+                - id: "gw-dev"
+                  name: "dev"
+                  risk_tier: "low"
+                - id: "gw-staging"
+                  name: "staging"
+                  risk_tier: "medium"
+                - id: "gw-prod"
+                  name: "prod"
+                  risk_tier: "critical"
+        - id: "ml-team"
+          name: "ML Team"
+          projects:
+            - id: "recommender"
+              name: "Recommendation Engine"
+              environments:
+                - id: "rec-dev"
+                  name: "dev"
+                  risk_tier: "low"
+                - id: "rec-prod"
+                  name: "prod"
+                  risk_tier: "high"
+
+# Behavioral session policy engine
+# Detects risky agent behavior across action sequences, not just single steps.
+# Patterns detected: data exfiltration, privilege escalation, credential abuse,
+# destructive sequences, suspicious fan-out, and repeated escalation attempts.
+behavioral:
+  enabled: true
+  kill_switch_score: 80             # Auto-block session when cumulative risk exceeds this
+  window_minutes: 30                # Analysis window (minutes); 0 = unlimited

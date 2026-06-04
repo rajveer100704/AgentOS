@@ -1,0 +1,14 @@
+apiVersion: v2
+name: AgentOS
+description: AgentOS - Runtime governance for tool-using agents
+type: application
+version: 0.7.0
+appVersion: "0.7.0"
+keywords:
+  - AgentOS
+  - governance
+  - mcp
+  - agent-safety
+maintainers:
+  - name: AgentOS
+    url: https://github.com/saivedant169/AgentOS

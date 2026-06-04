@@ -1,0 +1,2707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AegisFlow Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+  (function() {
+    try {
+      var theme = localStorage.getItem('aegisflow-theme');
+      if (theme === 'light' || theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', theme);
+      }
+    } catch (e) {}
+  })();
+</script>
+<style>
+  :root {
+    --bg-primary: #030712;
+    --bg-card: #0d1117;
+    --bg-card-hover: #161b22;
+    --bg-elevated: #1c2333;
+    --border: #21262d;
+    --border-light: #30363d;
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+    --text-muted: #484f58;
+    --accent-blue: #58a6ff;
+    --accent-green: #3fb950;
+    --accent-purple: #bc8cff;
+    --accent-orange: #d29922;
+    --accent-red: #f85149;
+    --accent-cyan: #39d2c0;
+    --accent-pink: #f778ba;
+    --gradient-blue: linear-gradient(135deg, #58a6ff 0%, #1f6feb 100%);
+    --gradient-green: linear-gradient(135deg, #3fb950 0%, #238636 100%);
+    --gradient-purple: linear-gradient(135deg, #bc8cff 0%, #8957e5 100%);
+    --gradient-orange: linear-gradient(135deg, #d29922 0%, #bb8009 100%);
+  }
+  :root[data-theme="light"] {
+    --bg-primary: #f3efe6;
+    --bg-card: rgba(255, 252, 246, 0.92);
+    --bg-card-hover: #f6efe1;
+    --bg-elevated: #ece3d3;
+    --border: #d7ccb8;
+    --border-light: #c5b79f;
+    --text-primary: #1f1d1a;
+    --text-secondary: #5d5243;
+    --text-muted: #8f7f6a;
+    --accent-blue: #0f5cc0;
+    --accent-green: #237a4b;
+    --accent-purple: #7a4cc7;
+    --accent-orange: #b26c00;
+    --accent-red: #b42318;
+    --accent-cyan: #0d8093;
+    --accent-pink: #bf4f7b;
+    --gradient-blue: linear-gradient(135deg, #2563eb 0%, #0f5cc0 100%);
+    --gradient-green: linear-gradient(135deg, #2f9e62 0%, #237a4b 100%);
+    --gradient-purple: linear-gradient(135deg, #8b5cf6 0%, #7a4cc7 100%);
+    --gradient-orange: linear-gradient(135deg, #d97706 0%, #b26c00 100%);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-primary); color: var(--text-primary); min-height: 100vh;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  }
+  body::before {
+    content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(ellipse 600px 400px at 20% 10%, rgba(88, 166, 255, 0.12), transparent 70%),
+      radial-gradient(ellipse 500px 350px at 75% 20%, rgba(188, 140, 255, 0.08), transparent 70%),
+      radial-gradient(ellipse 400px 300px at 50% 80%, rgba(63, 185, 80, 0.05), transparent 70%);
+  }
+  :root[data-theme="light"] body::before {
+    background:
+      radial-gradient(ellipse 700px 480px at 15% 10%, rgba(37, 99, 235, 0.10), transparent 70%),
+      radial-gradient(ellipse 640px 420px at 80% 15%, rgba(217, 119, 6, 0.10), transparent 70%),
+      radial-gradient(ellipse 520px 380px at 55% 78%, rgba(47, 158, 98, 0.08), transparent 70%);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+  :focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 2px; border-radius: 4px; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  .page { animation: fadeIn 0.25s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.4); } 50% { box-shadow: 0 0 0 4px rgba(63, 185, 80, 0); } }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+  /* Sidebar */
+  .sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0; width: 250px;
+    background: linear-gradient(180deg, #0d1117 0%, #0a0e18 100%);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; z-index: 10;
+  }
+  .sidebar-brand {
+    padding: 24px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .sidebar-brand .logo {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: var(--gradient-blue); display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 16px; color: white;
+    box-shadow: 0 0 24px rgba(88, 166, 255, 0.35), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  .sidebar-brand .name { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+  .sidebar-brand .name span { color: var(--accent-blue); }
+  .sidebar-brand .version {
+    font-size: 10px; color: var(--accent-green); font-weight: 600;
+    background: rgba(63, 185, 80, 0.1); border: 1px solid rgba(63, 185, 80, 0.2);
+    padding: 2px 7px; border-radius: 4px; margin-left: 4px;
+  }
+
+  .sidebar-nav { padding: 16px 12px; flex: 1; }
+  .nav-section { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.2px; padding: 16px 12px 8px; font-weight: 600; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 2px;
+    border-radius: 8px; color: var(--text-secondary); font-size: 13px; font-weight: 450;
+    cursor: pointer; transition: all 0.15s ease; user-select: none;
+    position: relative;
+  }
+  .nav-item:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+  .nav-item:active { transform: scale(0.97); }
+  .nav-item.active {
+    background: linear-gradient(135deg, rgba(88, 166, 255, 0.12) 0%, rgba(188, 140, 255, 0.06) 100%);
+    color: var(--accent-blue); font-weight: 500;
+    box-shadow: inset 0 0 0 1px rgba(88, 166, 255, 0.15);
+  }
+  .nav-item.active::before {
+    content: ''; position: absolute; left: -12px; top: 8px; bottom: 8px; width: 3px;
+    border-radius: 0 3px 3px 0; background: var(--accent-blue);
+    box-shadow: 0 0 12px rgba(88, 166, 255, 0.6), 0 0 4px rgba(88, 166, 255, 0.3);
+  }
+  .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.7; }
+  .nav-item:hover svg, .nav-item.active svg { opacity: 1; }
+
+  .sidebar-footer { padding: 16px 20px; border-top: 1px solid var(--border); }
+  .sidebar-footer .status-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); }
+  .sidebar-footer .theme-toggle {
+    margin-top: 10px; width: 100%; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--bg-card); color: var(--text-primary); padding: 9px 12px; font-size: 12px;
+    font-weight: 600; cursor: pointer; transition: all 0.15s ease;
+  }
+  .sidebar-footer .theme-toggle:hover { background: var(--bg-card-hover); border-color: var(--border-light); }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--accent-green); flex-shrink: 0;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .status-dot.error { background: var(--accent-red); animation: none; box-shadow: 0 0 8px rgba(248, 81, 73, 0.5); }
+
+  /* Main content */
+  .main { margin-left: 250px; padding: 28px 36px; max-width: 1600px; }
+
+  /* Top bar */
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+  .topbar h2 { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+  .topbar .refresh-info {
+    font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px;
+  }
+
+  /* Stat cards */
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px; position: relative; overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+  }
+  .stat-card:hover {
+    border-color: var(--border-light); transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.03);
+  }
+  .stat-card .stat-icon {
+    width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    margin-bottom: 16px;
+  }
+  .stat-card .stat-icon svg { width: 22px; height: 22px; color: white; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2)); }
+  .stat-card .stat-icon.blue { background: var(--gradient-blue); box-shadow: 0 6px 20px rgba(88, 166, 255, 0.35); }
+  .stat-card .stat-icon.green { background: var(--gradient-green); box-shadow: 0 6px 20px rgba(63, 185, 80, 0.35); }
+  .stat-card .stat-icon.purple { background: var(--gradient-purple); box-shadow: 0 6px 20px rgba(188, 140, 255, 0.35); }
+  .stat-card .stat-icon.orange { background: var(--gradient-orange); box-shadow: 0 6px 20px rgba(210, 153, 34, 0.35); }
+  .stat-card .stat-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px; }
+  .stat-card .stat-value { font-size: 30px; font-weight: 800; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+  .stat-card .stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+  .stat-card .stat-glow {
+    position: absolute; top: -50px; right: -50px; width: 150px; height: 150px;
+    border-radius: 50%; opacity: 0.15; filter: blur(50px); transition: opacity 0.4s;
+  }
+  .stat-card:hover .stat-glow { opacity: 0.3; }
+  .stat-card .stat-glow.blue { background: var(--accent-blue); }
+  .stat-card .stat-glow.green { background: var(--accent-green); }
+  .stat-card .stat-glow.purple { background: var(--accent-purple); }
+  .stat-card .stat-glow.orange { background: var(--accent-orange); }
+
+  /* Charts row */
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+  .chart-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px;
+    transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+  }
+  .chart-card:hover { border-color: var(--border-light); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+  .chart-card .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .chart-card .chart-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .chart-wrap { position: relative; height: 200px; }
+  .custom-legend {
+    display: flex; align-items: center; justify-content: center; gap: 18px;
+    padding-top: 14px; flex-wrap: wrap;
+  }
+  .custom-legend .legend-item {
+    display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); font-weight: 500;
+  }
+  .custom-legend .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Provider status */
+  .provider-list { display: flex; flex-direction: column; gap: 8px; }
+  .provider-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; background: rgba(13, 17, 23, 0.6); border-radius: 12px;
+    border: 1px solid transparent; transition: all 0.2s ease;
+  }
+  .provider-item:hover { border-color: var(--border); background: var(--bg-card-hover); }
+  .provider-item .provider-info { display: flex; align-items: center; gap: 10px; }
+  .provider-item .provider-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .provider-item .provider-name { font-size: 13px; font-weight: 600; }
+  .provider-item .provider-type { font-size: 11px; color: var(--text-muted); }
+  .provider-item .provider-count { font-size: 14px; font-weight: 700; color: var(--accent-blue); }
+
+  /* Table */
+  .table-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px; margin-bottom: 28px; overflow-x: auto;
+  }
+  .table-card .table-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .table-card .table-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .table-card .table-count {
+    font-size: 11px; color: var(--accent-blue); font-weight: 600;
+    background: rgba(88, 166, 255, 0.08); border: 1px solid rgba(88, 166, 255, 0.15);
+    padding: 4px 10px; border-radius: 20px;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    text-align: left; font-size: 11px; color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 0.5px; padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 600;
+  }
+  tbody td { padding: 14px 16px; border-bottom: 1px solid rgba(33, 38, 45, 0.5); font-size: 13px; font-variant-numeric: tabular-nums; }
+  tbody tr { transition: background 0.15s ease; }
+  tbody tr:hover td { background: var(--bg-card-hover); }
+  tbody tr:first-child td { padding-top: 16px; }
+  .badge {
+    display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 6px;
+    font-size: 12px; font-weight: 500; transition: all 0.15s ease;
+  }
+  .badge-tenant { background: rgba(88, 166, 255, 0.1); color: var(--accent-blue); }
+  .badge-model { background: rgba(188, 140, 255, 0.1); color: var(--accent-purple); font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: 11px; }
+  .badge-mock { background: rgba(63, 185, 80, 0.1); color: var(--accent-green); }
+  .badge-openai { background: rgba(210, 153, 34, 0.1); color: var(--accent-orange); }
+  .badge-ollama { background: rgba(57, 210, 192, 0.1); color: var(--accent-cyan); }
+
+  /* Token bar */
+  .token-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 2px; min-width: 100px; background: rgba(33, 38, 45, 0.5); }
+  .token-bar .prompt { background: linear-gradient(90deg, #58a6ff, #79c0ff); border-radius: 4px; transition: width 0.6s cubic-bezier(0.2, 0, 0, 1); }
+  .token-bar .completion { background: linear-gradient(90deg, #bc8cff, #d2a8ff); border-radius: 4px; transition: width 0.6s cubic-bezier(0.2, 0, 0, 1); }
+
+  /* Empty state */
+  .empty-state { text-align: center; padding: 56px 24px; color: var(--text-muted); }
+  .empty-state svg { width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.2; }
+  .empty-state p { font-size: 14px; font-weight: 500; }
+  .empty-state .hint { font-size: 12px; margin-top: 8px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 11px; background: var(--bg-elevated); padding: 8px 16px; border-radius: 8px; display: inline-block; margin-top: 12px; }
+
+  @media (max-width: 1280px) {
+    .charts-row { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 1024px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 20px; }
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .charts-row { grid-template-columns: 1fr; }
+    .topbar h2 { font-size: 20px; }
+  }
+  @media (max-width: 640px) {
+    .stat-grid { grid-template-columns: 1fr; gap: 12px; }
+    .stat-card { padding: 18px; }
+    .stat-card .stat-value { font-size: 24px; }
+    table { font-size: 12px; }
+    thead th, tbody td { padding: 10px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo">A</div>
+    <div>
+      <div class="name"><span>Aegis</span>Flow</div>
+    </div>
+    <span class="version">v0.7.0</span>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Overview</div>
+    <div class="nav-item active" data-page="dashboard" onclick="switchPage('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-section">Monitoring</div>
+    <div class="nav-item" data-page="policies" onclick="switchPage('policies')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Policies
+    </div>
+    <div class="nav-item" data-page="requests" onclick="switchPage('requests')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Live Feed
+    </div>
+    <div class="nav-item" data-page="traces" onclick="switchPage('traces')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      Trace Explorer
+    </div>
+    <div class="nav-item" data-page="edge" onclick="switchPage('edge')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+      Edge Metrics
+    </div>
+    <div class="nav-item" data-page="violations" onclick="switchPage('violations')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Violations
+    </div>
+    <div class="nav-item" data-page="cache" onclick="switchPage('cache')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><circle cx="6" cy="6" r="1"/><circle cx="6" cy="18" r="1"/></svg>
+      Cache
+    </div>
+    <div class="nav-item" data-page="rollouts" onclick="switchPage('rollouts')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+      Rollouts
+    </div>
+    <div class="nav-item" data-page="analytics" onclick="switchPage('analytics')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+      Analytics
+    </div>
+    <div class="nav-item" data-page="alerts" onclick="switchPage('alerts')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+      Alerts
+    </div>
+    <div class="nav-item" data-page="budgets" onclick="switchPage('budgets')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      Budgets
+    </div>
+    <div class="nav-item" data-page="audit" onclick="switchPage('audit')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Audit Log
+    </div>
+    <div class="nav-section">Configuration</div>
+    <div class="nav-item" data-page="providers" onclick="switchPage('providers')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6M4.22 19.78l4.24-4.24M15.54 8.46l4.24-4.24"/></svg>
+      Providers
+    </div>
+    <div class="nav-item" data-page="tenants" onclick="switchPage('tenants')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      Tenants
+    </div>
+    <div class="nav-item" data-page="federation" onclick="switchPage('federation')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><line x1="12" y1="8" x2="5" y2="16"/><line x1="12" y1="8" x2="19" y2="16"/></svg>
+      Federation
+    </div>
+    <div style="border-top:1px solid var(--border); margin:12px 8px;"></div>
+    <div style="padding:0 16px 8px; font-size:11px; text-transform:uppercase; letter-spacing:1.2px; color:var(--text-muted); font-weight:600;">Governance</div>
+    <div class="nav-item" data-page="approvals" onclick="switchPage('approvals')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      Approvals
+    </div>
+    <div class="nav-item" data-page="evidence" onclick="switchPage('evidence')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Evidence
+    </div>
+    <div class="nav-item" data-page="behavioral" onclick="switchPage('behavioral')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Behavioral
+    </div>
+    <div class="nav-item" data-page="manifests" onclick="switchPage('manifests')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+      Manifests
+    </div>
+    <div class="nav-item" data-page="policyVersions" onclick="switchPage('policyVersions')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      Policy Versions
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <div class="status-row">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Connected</span>
+    </div>
+    <div class="status-row" style="margin-top:6px;">
+      <span id="lastUpdate" style="font-size:11px;">--</span>
+    </div>
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">Switch To Light Theme</button>
+  </div>
+</div>
+
+<div class="main">
+  <!-- PAGE: Dashboard -->
+  <div class="page" id="page-dashboard">
+  <div class="topbar">
+    <h2>Gateway Overview</h2>
+    <div class="refresh-info">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+      Auto-refresh 3s
+    </div>
+  </div>
+
+  <!-- Stat Cards -->
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-glow green"></div>
+      <div class="stat-icon green">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      </div>
+      <div class="stat-label">Total Requests</div>
+      <div class="stat-value" id="totalRequests">0</div>
+      <div class="stat-sub" id="reqRate">0 req/min</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-glow blue"></div>
+      <div class="stat-icon blue">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12l2 2 4-4"/></svg>
+      </div>
+      <div class="stat-label">Total Tokens</div>
+      <div class="stat-value" id="totalTokens">0</div>
+      <div class="stat-sub" id="tokenSplit">0 prompt / 0 completion</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-glow purple"></div>
+      <div class="stat-icon purple">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      </div>
+      <div class="stat-label">Estimated Cost</div>
+      <div class="stat-value" id="totalCost">$0.00</div>
+      <div class="stat-sub">Based on provider pricing</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-glow orange"></div>
+      <div class="stat-icon orange">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      </div>
+      <div class="stat-label">Active Tenants</div>
+      <div class="stat-value" id="activeTenants">0</div>
+      <div class="stat-sub" id="modelCount">0 models active</div>
+    </div>
+  </div>
+
+  <!-- Phase 3: Operational Status -->
+  <div class="stat-grid" style="margin-bottom: 28px;">
+    <div class="stat-card">
+      <div class="stat-glow orange"></div>
+      <div class="stat-icon orange">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      </div>
+      <div class="stat-label">Active Alerts</div>
+      <div class="stat-value" id="overviewAlerts">0</div>
+      <div class="stat-sub" id="overviewAlertDetail">No active alerts</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-glow blue"></div>
+      <div class="stat-icon blue">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>
+      </div>
+      <div class="stat-label">Active Rollouts</div>
+      <div class="stat-value" id="overviewRollouts">0</div>
+      <div class="stat-sub" id="overviewRolloutDetail">No active rollouts</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-glow purple"></div>
+      <div class="stat-icon purple">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      </div>
+      <div class="stat-label">Budget Status</div>
+      <div class="stat-value" id="overviewBudget">OK</div>
+      <div class="stat-sub" id="overviewBudgetDetail">All budgets within limits</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-glow green"></div>
+      <div class="stat-icon green">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+      </div>
+      <div class="stat-label">Provider Regions</div>
+      <div class="stat-value" id="overviewRegions">0</div>
+      <div class="stat-sub" id="overviewRegionDetail">No regions configured</div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-header">
+        <span class="chart-title">Requests by Model</span>
+      </div>
+      <div class="chart-wrap"><canvas id="modelChart"></canvas></div>
+      <div class="custom-legend" id="modelLegend"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <span class="chart-title">Token Distribution</span>
+      </div>
+      <div class="chart-wrap"><canvas id="tokenChart"></canvas></div>
+      <div class="custom-legend" id="tokenLegend"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <span class="chart-title">Provider Status</span>
+      </div>
+      <div class="provider-list" id="providerList">
+        <div class="empty-state">
+          <p>No data yet</p>
+          <div class="hint">Send requests to see provider stats</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-card">
+    <div class="table-header">
+      <span class="table-title">Usage Breakdown</span>
+      <span class="table-count" id="rowCount">0 entries</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Tenant</th>
+          <th>Model</th>
+          <th>Provider</th>
+          <th>Requests</th>
+          <th>Token Split</th>
+          <th>Total Tokens</th>
+          <th>Estimated Cost</th>
+        </tr>
+      </thead>
+      <tbody id="usageTable">
+        <tr><td colspan="7" class="empty-state"><p>No usage data yet</p><div class="hint">Send a request: curl -X POST http://localhost:8080/v1/chat/completions ...</div></td></tr>
+      </tbody>
+    </table>
+  </div>
+  </div><!-- end page-dashboard -->
+
+  <!-- PAGE: Policies -->
+  <div class="page" id="page-policies" style="display:none;">
+    <div class="topbar"><h2>Policy Engine</h2></div>
+    <div class="stat-grid" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="stat-card">
+        <div class="stat-icon blue" style="width:36px;height:36px;border-radius:8px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="18" height="18"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="stat-label">Input Policies</div>
+        <div class="stat-value" id="inputPolicyCount">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon purple" style="width:36px;height:36px;border-radius:8px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="18" height="18"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        </div>
+        <div class="stat-label">Output Policies</div>
+        <div class="stat-value" id="outputPolicyCount">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon orange" style="width:36px;height:36px;border-radius:8px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="18" height="18"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="stat-label">Blocking Policies</div>
+        <div class="stat-value" id="blockPolicyCount">0</div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-header">
+        <span class="table-title">Configured Policies</span>
+      </div>
+      <table>
+        <thead><tr><th>Name</th><th>Type</th><th>Phase</th><th>Action</th><th>Rules</th></tr></thead>
+        <tbody id="policiesTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGE: Providers -->
+  <div class="page" id="page-providers" style="display:none;">
+    <div class="topbar"><h2>Providers</h2></div>
+    <div id="providerCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-bottom:24px;"></div>
+  </div>
+
+  <!-- PAGE: Tenants -->
+  <div class="page" id="page-tenants" style="display:none;">
+    <div class="topbar"><h2>Tenants</h2></div>
+    <div id="tenantCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;margin-bottom:24px;"></div>
+  </div>
+
+  <!-- PAGE: Policy Violations -->
+  <div class="page" id="page-violations" style="display:none;">
+    <div class="topbar">
+      <h2>Policy Violations</h2>
+      <div class="refresh-info">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+        Auto-refresh 3s
+      </div>
+    </div>
+    <div class="stat-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 20px;">
+      <div class="stat-card">
+        <div class="stat-glow orange"></div>
+        <div class="stat-label">Total Violations</div>
+        <div class="stat-value" id="violationTotal">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow purple"></div>
+        <div class="stat-label">Unique Policies Triggered</div>
+        <div class="stat-value" id="violationPolicies">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow blue"></div>
+        <div class="stat-label">Tenants Affected</div>
+        <div class="stat-value" id="violationTenants">0</div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-header">
+        <span class="table-title">Recent Policy Violations</span>
+        <span class="table-count" id="violationCount">0 entries</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Policy</th>
+            <th>Tenant</th>
+            <th>Model</th>
+            <th>Status</th>
+            <th>Latency</th>
+          </tr>
+        </thead>
+        <tbody id="violationTable">
+          <tr><td colspan="6" class="empty-state"><p>No policy violations recorded</p><div class="hint">Violations appear when requests trigger policy filters</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGE: Cache Stats -->
+  <div class="page" id="page-cache" style="display:none;">
+    <div class="topbar">
+      <h2>Response Cache</h2>
+      <div class="refresh-info">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        Auto-refresh 3s
+      </div>
+    </div>
+    <div class="stat-grid" style="grid-template-columns: repeat(6, 1fr); margin-bottom: 20px;">
+      <div class="stat-card">
+        <div class="stat-glow green"></div>
+        <div class="stat-label">Hits</div>
+        <div class="stat-value" id="cacheHits">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow orange"></div>
+        <div class="stat-label">Misses</div>
+        <div class="stat-value" id="cacheMisses">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow blue"></div>
+        <div class="stat-label">Hit Rate</div>
+        <div class="stat-value" id="cacheHitRate">0%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow purple"></div>
+        <div class="stat-label">Size / Max</div>
+        <div class="stat-value" id="cacheSize">0 / 0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow orange"></div>
+        <div class="stat-label">Evictions</div>
+        <div class="stat-value" id="cacheEvictions">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow cyan"></div>
+        <div class="stat-label">TTL</div>
+        <div class="stat-value" id="cacheTTL">--</div>
+      </div>
+    </div>
+    <div class="chart-card" style="margin-bottom:24px;">
+      <div class="chart-header"><span class="chart-title">Hit Rate Over Time</span></div>
+      <div class="chart-wrap"><canvas id="cacheChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- PAGE: Live Request Feed -->
+  <div class="page" id="page-requests" style="display:none;">
+    <div class="topbar">
+      <h2>Live Request Feed</h2>
+      <div class="refresh-info">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Auto-refresh 2s
+      </div>
+    </div>
+    <div class="stat-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
+      <div class="stat-card">
+        <div class="stat-glow green"></div>
+        <div class="stat-label">Recent Requests</div>
+        <div class="stat-value" id="feedTotal">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow blue"></div>
+        <div class="stat-label">Avg Latency</div>
+        <div class="stat-value" id="feedAvgLatency">0ms</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow purple"></div>
+        <div class="stat-label">Cache Hit Rate</div>
+        <div class="stat-value" id="feedCacheRate">0%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow orange"></div>
+        <div class="stat-label">Policy Hits</div>
+        <div class="stat-value" id="feedPolicyHits">0</div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-header">
+        <span class="table-title">Recent Requests</span>
+        <span class="table-count" id="feedCount">0 entries</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Request ID</th>
+            <th>Tenant</th>
+            <th>Model</th>
+            <th>Region</th>
+            <th>Data Plane</th>
+            <th>Status</th>
+            <th>Latency</th>
+            <th>Tokens</th>
+            <th>Cache</th>
+            <th>Policy</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody id="feedTable">
+          <tr><td colspan="12" class="empty-state"><p>No requests yet</p><div class="hint">Send a request to see live feed data</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGE: Rollouts -->
+  <div class="page" id="page-rollouts" style="display:none;">
+    <div class="topbar">
+      <h2>Canary Rollouts</h2>
+      <div class="refresh-info">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        Auto-refresh 3s
+      </div>
+    </div>
+    <div class="stat-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 20px;">
+      <div class="stat-card">
+        <div class="stat-glow green"></div>
+        <div class="stat-label">Active Rollouts</div>
+        <div class="stat-value" id="rolloutActive">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow blue"></div>
+        <div class="stat-label">Completed This Week</div>
+        <div class="stat-value" id="rolloutCompletedWeek">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow orange"></div>
+        <div class="stat-label">Rolled Back This Week</div>
+        <div class="stat-value" id="rolloutRolledBackWeek">0</div>
+      </div>
+    </div>
+    <div id="rolloutActiveCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:16px;margin-bottom:28px;"></div>
+    <div class="table-card">
+      <div class="table-header">
+        <span class="table-title">Rollout History</span>
+        <span class="table-count" id="rolloutHistoryCount">0 entries</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Route</th>
+            <th>Canary Provider</th>
+            <th>State</th>
+            <th>Final %</th>
+            <th>Error Rate</th>
+            <th>P95 Latency</th>
+            <th>Completed</th>
+          </tr>
+        </thead>
+        <tbody id="rolloutHistoryTable">
+          <tr><td colspan="7" class="empty-state"><p>No rollout history yet</p><div class="hint">Completed and rolled-back rollouts will appear here</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGE: Trace Explorer -->
+  <div class="page" id="page-traces" style="display:none;">
+    <div class="topbar">
+      <h2>Trace Explorer</h2>
+      <div class="refresh-info">Auto-refresh 3s</div>
+    </div>
+    <div class="stat-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 20px;">
+      <div class="stat-card">
+        <div class="stat-glow blue"></div>
+        <div class="stat-label">Total Spans</div>
+        <div class="stat-value" id="traceTotalCount">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow" style="background:var(--accent-red);"></div>
+        <div class="stat-label">Error Rate</div>
+        <div class="stat-value" id="traceErrorRate">0%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow green"></div>
+        <div class="stat-label">Avg Duration</div>
+        <div class="stat-value" id="traceAvgDuration">0ms</div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-header">
+        <span class="table-title">Recent Spans (TraceStore Ring Buffer)</span>
+        <span class="table-count" id="tracesCount">0 entries</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Trace ID</th>
+            <th>Operation</th>
+            <th>Duration</th>
+            <th>Status</th>
+            <th>Key Attributes</th>
+          </tr>
+        </thead>
+        <tbody id="tracesTable">
+          <tr><td colspan="6" class="empty-state"><p>No traces yet</p></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGE: Edge Metrics -->
+  <div class="page" id="page-edge" style="display:none;">
+    <div class="topbar">
+      <h2>AgentOS Edge Metrics</h2>
+      <div class="refresh-info">Auto-refresh 3s</div>
+    </div>
+    <div class="stat-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 20px;">
+      <div class="stat-card">
+        <div class="stat-glow green"></div>
+        <div class="stat-label">Active Connections</div>
+        <div class="stat-value" id="edgeActiveConnections">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow orange"></div>
+        <div class="stat-label">Load Shed Requests</div>
+        <div class="stat-value" id="edgeLoadShedCount">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow blue"></div>
+        <div class="stat-label">Circuit Breakers</div>
+        <div class="stat-value" id="edgeBreakerCount">0 / 0</div>
+        <div class="stat-sub">Open / Total</div>
+      </div>
+    </div>
+    <div class="table-card" style="margin-bottom: 24px;">
+      <div class="table-header">
+        <span class="table-title">Upstream Request Distribution</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Upstream</th>
+            <th>Status</th>
+            <th>Total Requests</th>
+          </tr>
+        </thead>
+        <tbody id="edgeRequestsTable">
+          <tr><td colspan="3" class="empty-state"><p>No edge traffic recorded</p></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="table-card">
+      <div class="table-header">
+        <span class="table-title">Circuit Breaker States</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Upstream</th>
+            <th>State</th>
+          </tr>
+        </thead>
+        <tbody id="edgeBreakersTable">
+          <tr><td colspan="2" class="empty-state"><p>No circuit breakers loaded</p></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGE: Analytics -->
+  <div class="page" id="page-analytics" style="display:none;">
+    <div class="topbar">
+      <h2>Analytics</h2>
+      <div class="refresh-info">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        Auto-refresh 3s
+      </div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-glow green"></div>
+        <div class="stat-icon green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        </div>
+        <div class="stat-label">Total Requests (Last Hour)</div>
+        <div class="stat-value" id="analyticsRequests">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow orange"></div>
+        <div class="stat-icon orange">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+        </div>
+        <div class="stat-label">Avg Error Rate</div>
+        <div class="stat-value" id="analyticsErrorRate">0%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow purple"></div>
+        <div class="stat-icon purple">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="stat-label">Avg P95 Latency</div>
+        <div class="stat-value" id="analyticsP95">0ms</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow blue"></div>
+        <div class="stat-icon blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        </div>
+        <div class="stat-label">Active Dimensions</div>
+        <div class="stat-value" id="analyticsDimensions">0</div>
+      </div>
+    </div>
+    <div class="chart-card" style="margin-bottom:24px;">
+      <div class="chart-header"><span class="chart-title">Request Rate Over Time</span></div>
+      <div class="chart-wrap"><canvas id="analyticsChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- PAGE: Alerts -->
+  <div class="page" id="page-alerts" style="display:none;">
+    <div class="topbar">
+      <h2>Alerts</h2>
+      <div class="refresh-info">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+        Auto-refresh 3s
+      </div>
+    </div>
+    <div class="stat-grid" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="stat-card">
+        <div class="stat-glow orange"></div>
+        <div class="stat-label">Active Alerts</div>
+        <div class="stat-value" id="alertsActive">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow" style="background:var(--accent-red);"></div>
+        <div class="stat-label">Critical</div>
+        <div class="stat-value" id="alertsCritical">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow orange"></div>
+        <div class="stat-label">Warnings</div>
+        <div class="stat-value" id="alertsWarnings">0</div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-header">
+        <span class="table-title">Alert Feed</span>
+        <span class="table-count" id="alertsCount">0 entries</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Severity</th>
+            <th>Dimension</th>
+            <th>Metric</th>
+            <th>Value</th>
+            <th>Threshold</th>
+            <th>Message</th>
+            <th>State</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="alertsTable">
+          <tr><td colspan="9" class="empty-state"><p>No alerts</p><div class="hint">Alerts appear when metrics exceed configured thresholds</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGE: Budgets -->
+  <div class="page" id="page-budgets" style="display:none;">
+    <div class="topbar">
+      <h2>Budgets</h2>
+      <div class="refresh-info">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        Auto-refresh 5s
+      </div>
+    </div>
+    <div class="stat-grid" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="stat-card">
+        <div class="stat-glow green"></div>
+        <div class="stat-label">Total Scopes</div>
+        <div class="stat-value" id="budgetTotalScopes">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow orange"></div>
+        <div class="stat-label">Over Warning</div>
+        <div class="stat-value" id="budgetOverWarn">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow" style="background:var(--accent-red);"></div>
+        <div class="stat-label">Blocked</div>
+        <div class="stat-value" id="budgetBlocked">0</div>
+      </div>
+    </div>
+    <div id="budgetCards" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap:16px; margin-top:16px;">
+      <div class="stat-card" style="grid-column:1/-1; text-align:center; padding:40px;">
+        <p style="color:var(--text-secondary);">No budget scopes configured</p>
+        <div style="color:var(--text-muted); font-size:12px; margin-top:8px;">Configure budget scopes in aegisflow.yaml to track spend</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: Audit Log -->
+  <div class="page" id="page-audit" style="display:none;">
+    <div class="topbar">
+      <h2>Audit Log</h2>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button onclick="downloadAuditCSV()" style="background:var(--gradient-blue); color:white; border:none; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download CSV
+        </button>
+        <button onclick="verifyAudit()" style="background:var(--gradient-purple); color:white; border:none; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Verify Integrity
+        </button>
+        <div class="refresh-info">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Auto-refresh 5s
+        </div>
+      </div>
+    </div>
+    <div id="auditVerifyResult" style="display:none; margin-bottom:16px; padding:12px 16px; border-radius:8px; font-size:13px;"></div>
+    <div class="stat-card" style="overflow-x:auto;">
+      <table class="data-table" style="width:100%;">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Actor</th>
+            <th>Role</th>
+            <th>Action</th>
+            <th>Resource</th>
+            <th>Tenant</th>
+          </tr>
+        </thead>
+        <tbody id="auditTableBody">
+          <tr><td colspan="6" style="text-align:center; color:var(--text-secondary); padding:40px;">No audit entries</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGE: Federation -->
+  <div class="page" id="page-federation" style="display:none;">
+    <div class="topbar">
+      <h2>Federation</h2>
+      <div class="refresh-info">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><line x1="12" y1="8" x2="5" y2="16"/><line x1="12" y1="8" x2="19" y2="16"/></svg>
+        Auto-refresh 5s
+      </div>
+    </div>
+    <div class="stat-card" style="overflow-x:auto;">
+      <table class="data-table" style="width:100%;">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Health</th>
+            <th>Last Seen</th>
+            <th>Requests</th>
+            <th>Error Rate</th>
+          </tr>
+        </thead>
+        <tbody id="federationTableBody">
+          <tr><td colspan="5" style="text-align:center; color:var(--text-secondary); padding:40px;">No data planes registered</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGE: Approvals -->
+  <div class="page" id="page-approvals" style="display:none;">
+    <div class="topbar">
+      <h2>Approvals</h2>
+      <div class="refresh-info">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Auto-refresh 3s
+      </div>
+    </div>
+    <div class="stat-grid" style="grid-template-columns: repeat(2, 1fr);">
+      <div class="stat-card">
+        <div class="stat-glow orange"></div>
+        <div class="stat-label">Pending</div>
+        <div class="stat-value" id="approvalsPendingCount">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow green"></div>
+        <div class="stat-label">Approved (recent)</div>
+        <div class="stat-value" id="approvalsApprovedCount">0</div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-header">
+        <span class="table-title">Pending Approvals</span>
+        <span class="table-count" id="approvalsPendingLabel">0 items</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Tool</th><th>Protocol</th><th>Target</th><th>Actor</th><th>Submitted</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="approvalsTable">
+          <tr><td colspan="7" class="empty-state"><p>No pending approvals</p></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGE: Evidence -->
+  <div class="page" id="page-evidence" style="display:none;">
+    <div class="topbar">
+      <h2>Evidence Chain</h2>
+    </div>
+    <div class="stat-grid" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="stat-card">
+        <div class="stat-glow blue"></div>
+        <div class="stat-label">Sessions</div>
+        <div class="stat-value" id="evidenceSessionCount">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow green"></div>
+        <div class="stat-label">Total Actions</div>
+        <div class="stat-value" id="evidenceActionCount">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow green"></div>
+        <div class="stat-label">Chain Status</div>
+        <div class="stat-value" id="evidenceChainStatus">-</div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-header">
+        <span class="table-title">Sessions</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Session ID</th><th>Actions</th><th>Allowed</th><th>Blocked</th><th>Chain Valid</th><th>Report</th></tr>
+        </thead>
+        <tbody id="evidenceTable">
+          <tr><td colspan="6" class="empty-state"><p>No evidence sessions</p></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGE: Behavioral -->
+  <div class="page" id="page-behavioral" style="display:none;">
+    <div class="topbar">
+      <h2>Behavioral Analysis</h2>
+    </div>
+    <div class="stat-grid" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="stat-card">
+        <div class="stat-glow blue"></div>
+        <div class="stat-label">Active Sessions</div>
+        <div class="stat-value" id="behavioralSessionCount">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow orange"></div>
+        <div class="stat-label">At-Risk Sessions</div>
+        <div class="stat-value" id="behavioralAtRisk">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow" style="background:var(--accent-red);"></div>
+        <div class="stat-label">Blocked Sessions</div>
+        <div class="stat-value" id="behavioralBlocked">0</div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-header">
+        <span class="table-title">Session Risk Monitor</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Session ID</th><th>Risk Score</th><th>Alerts</th><th>Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="behavioralTable">
+          <tr><td colspan="5" class="empty-state"><p>No behavioral data</p><div class="hint">Enable behavioral analysis in config</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGE: Manifests -->
+  <div class="page" id="page-manifests" style="display:none;">
+    <div class="topbar">
+      <h2>Task Manifests</h2>
+    </div>
+    <div class="stat-grid" style="grid-template-columns: repeat(2, 1fr);">
+      <div class="stat-card">
+        <div class="stat-glow blue"></div>
+        <div class="stat-label">Active Manifests</div>
+        <div class="stat-value" id="manifestsCount">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow orange"></div>
+        <div class="stat-label">Drift Events</div>
+        <div class="stat-value" id="manifestsDriftCount">0</div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-header">
+        <span class="table-title">Active Manifests</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Task</th><th>Owner</th><th>Risk Tier</th><th>Tools</th><th>Active</th></tr>
+        </thead>
+        <tbody id="manifestsTable">
+          <tr><td colspan="6" class="empty-state"><p>No active manifests</p></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGE: Policy Versions -->
+  <div class="page" id="page-policyVersions" style="display:none;">
+    <div class="topbar">
+      <h2>Policy Versions</h2>
+    </div>
+    <div class="stat-grid" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="stat-card">
+        <div class="stat-glow purple"></div>
+        <div class="stat-label">Current Version</div>
+        <div class="stat-value" id="policyCurrentVersion">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow blue"></div>
+        <div class="stat-label">Total Versions</div>
+        <div class="stat-value" id="policyVersionCount">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-glow green"></div>
+        <div class="stat-label">Rules (current)</div>
+        <div class="stat-value" id="policyRuleCount">0</div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-header">
+        <span class="table-title">Version History</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Version</th><th>Timestamp</th><th>Rules</th><th>Default</th><th>Source</th><th>Action</th></tr>
+        </thead>
+        <tbody id="policyVersionsTable">
+          <tr><td colspan="6" class="empty-state"><p>No policy versions</p></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- end main -->
+
+<script>
+const COLORS = {
+  blue: '#3b82f6', green: '#22c55e', purple: '#a855f7', orange: '#f59e0b',
+  red: '#ef4444', cyan: '#06b6d4', pink: '#ec4899', indigo: '#6366f1'
+};
+const CHART_COLORS = [COLORS.blue, COLORS.green, COLORS.purple, COLORS.orange, COLORS.cyan, COLORS.pink, COLORS.indigo, COLORS.red];
+
+let modelChart, tokenChart;
+let prevTotalReqs = 0, prevTimestamp = Date.now();
+
+function initCharts() {
+  Chart.defaults.color = '#64748b';
+  Chart.defaults.borderColor = '#1e293b';
+
+  modelChart = new Chart(document.getElementById('modelChart'), {
+    type: 'doughnut',
+    data: { labels: [], datasets: [{ data: [], backgroundColor: CHART_COLORS, borderWidth: 0, hoverOffset: 6 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  tokenChart = new Chart(document.getElementById('tokenChart'), {
+    type: 'bar',
+    data: {
+      labels: [],
+      datasets: [
+        { label: 'Prompt', data: [], backgroundColor: COLORS.blue + 'cc', borderRadius: 4, barPercentage: 0.6 },
+        { label: 'Completion', data: [], backgroundColor: COLORS.purple + 'cc', borderRadius: 4, barPercentage: 0.6 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: { stacked: true, grid: { color: '#1e293b40' }, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+function getModelBadgeClass(model) {
+  if (model.startsWith('gpt')) return 'badge-openai';
+  if (model.startsWith('qwen') || model.startsWith('llama')) return 'badge-ollama';
+  if (model === 'mock' || model === 'mock-fast') return 'badge-mock';
+  return 'badge-model';
+}
+
+function getProviderBadgeClass(provider) {
+  if (provider === 'openai') return 'badge-openai';
+  if (provider === 'ollama') return 'badge-ollama';
+  if (provider === 'mock') return 'badge-mock';
+  return 'badge-model';
+}
+
+function formatNumber(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+  return n.toLocaleString();
+}
+
+function applyTheme(theme) {
+  const nextTheme = theme === 'light' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', nextTheme);
+  try {
+    localStorage.setItem('aegisflow-theme', nextTheme);
+  } catch (e) {}
+  const button = document.getElementById('themeToggle');
+  if (button) {
+    button.textContent = nextTheme === 'light' ? 'Switch To Dark Theme' : 'Switch To Light Theme';
+  }
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  applyTheme(current === 'light' ? 'dark' : 'light');
+}
+
+async function fetchUsage() {
+  try {
+    const resp = await fetch('/admin/v1/usage');
+    const data = await resp.json();
+
+    let totalReqs = 0, totalToks = 0, totalCost = 0, totalPrompt = 0, totalCompletion = 0;
+    const modelMap = {};
+    const tenantData = {};
+    const providerRequests = {};
+    const rows = [];
+
+    for (const [tenantId, tenant] of Object.entries(data)) {
+      totalReqs += tenant.total_requests;
+      totalToks += tenant.total_tokens;
+      totalCost += tenant.estimated_cost_usd;
+
+      tenantData[tenantId] = { prompt: 0, completion: 0 };
+
+      const providerModelEntries = Object.values(tenant.by_provider_model || {});
+      const usageEntries = providerModelEntries.length > 0 ? providerModelEntries : Object.values(tenant.by_model || {});
+
+      for (const m of usageEntries) {
+        const model = m.model;
+        modelMap[model] = (modelMap[model] || 0) + m.requests;
+        totalPrompt += m.prompt_tokens;
+        totalCompletion += m.completion_tokens;
+        tenantData[tenantId].prompt += m.prompt_tokens;
+        tenantData[tenantId].completion += m.completion_tokens;
+
+        let provider = m.provider || 'unknown';
+        if (!m.provider) {
+          if (model.startsWith('gpt')) provider = 'openai';
+          else if (model.startsWith('qwen') || model.startsWith('llama')) provider = 'ollama';
+          else if (model.startsWith('claude')) provider = 'anthropic';
+          else provider = 'mock';
+        }
+        providerRequests[provider] = (providerRequests[provider] || 0) + m.requests;
+
+        rows.push({ tenant: tenantId, model, provider, requests: m.requests, promptTokens: m.prompt_tokens, completionTokens: m.completion_tokens, totalTokens: m.total_tokens, cost: m.estimated_cost_usd });
+      }
+    }
+
+    // Stat cards
+    document.getElementById('totalRequests').textContent = formatNumber(totalReqs);
+    document.getElementById('totalTokens').textContent = formatNumber(totalToks);
+    document.getElementById('totalCost').textContent = totalCost < 0.01 ? '$' + totalCost.toFixed(4) : '$' + totalCost.toFixed(2);
+    document.getElementById('activeTenants').textContent = Object.keys(data).length;
+    document.getElementById('tokenSplit').textContent = formatNumber(totalPrompt) + ' prompt / ' + formatNumber(totalCompletion) + ' completion';
+    document.getElementById('modelCount').textContent = Object.keys(modelMap).length + ' models active';
+
+    // Req rate
+    const now = Date.now();
+    const elapsed = (now - prevTimestamp) / 1000;
+    if (elapsed > 0 && prevTotalReqs > 0) {
+      const rate = ((totalReqs - prevTotalReqs) / elapsed * 60).toFixed(0);
+      document.getElementById('reqRate').textContent = rate + ' req/min';
+    }
+    prevTotalReqs = totalReqs;
+    prevTimestamp = now;
+
+    // Model chart
+    const modelLabels = Object.keys(modelMap);
+    const modelColors = CHART_COLORS.slice(0, modelLabels.length);
+    modelChart.data.labels = modelLabels;
+    modelChart.data.datasets[0].data = Object.values(modelMap);
+    modelChart.data.datasets[0].backgroundColor = modelColors;
+    modelChart.update('none');
+
+    // Model legend (HTML)
+    document.getElementById('modelLegend').innerHTML = modelLabels.map((label, i) =>
+      `<div class="legend-item"><div class="legend-dot" style="background:${modelColors[i]}"></div>${label}</div>`
+    ).join('');
+
+    // Token chart (stacked bar per tenant)
+    const tenantLabels = Object.keys(tenantData);
+    tokenChart.data.labels = tenantLabels;
+    tokenChart.data.datasets[0].data = tenantLabels.map(t => tenantData[t].prompt);
+    tokenChart.data.datasets[1].data = tenantLabels.map(t => tenantData[t].completion);
+    tokenChart.update('none');
+
+    // Token legend (HTML)
+    document.getElementById('tokenLegend').innerHTML =
+      `<div class="legend-item"><div class="legend-dot" style="background:${COLORS.blue}"></div>Prompt</div>` +
+      `<div class="legend-item"><div class="legend-dot" style="background:${COLORS.purple}"></div>Completion</div>`;
+
+    // Provider list
+    const providerList = document.getElementById('providerList');
+    const providerColors = { openai: COLORS.orange, ollama: COLORS.cyan, mock: COLORS.green, anthropic: COLORS.purple };
+    providerList.innerHTML = Object.entries(providerRequests).sort((a,b) => b[1] - a[1]).map(([name, count]) => `
+      <div class="provider-item">
+        <div class="provider-info">
+          <div class="provider-dot" style="background:${providerColors[name] || COLORS.blue}"></div>
+          <div>
+            <div class="provider-name">${name}</div>
+            <div class="provider-type">${name === 'mock' ? 'Local mock' : name === 'ollama' ? 'Local inference' : 'Cloud API'}</div>
+          </div>
+        </div>
+        <div class="provider-count">${count} req</div>
+      </div>
+    `).join('');
+
+    // Table
+    const tbody = document.getElementById('usageTable');
+    document.getElementById('rowCount').textContent = rows.length + ' entries';
+    if (rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><p>No usage data yet</p></td></tr>';
+    } else {
+      rows.sort((a, b) => b.totalTokens - a.totalTokens);
+      tbody.innerHTML = rows.map(r => {
+        const total = r.promptTokens + r.completionTokens || 1;
+        const promptPct = (r.promptTokens / total * 100).toFixed(0);
+        const compPct = (r.completionTokens / total * 100).toFixed(0);
+        return `<tr>
+          <td><span class="badge badge-tenant">${r.tenant}</span></td>
+          <td><span class="badge ${getModelBadgeClass(r.model)}">${r.model}</span></td>
+          <td><span class="badge ${getProviderBadgeClass(r.provider)}">${r.provider}</span></td>
+          <td>${r.requests.toLocaleString()}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div class="token-bar" style="flex:1;">
+                <div class="prompt" style="width:${promptPct}%"></div>
+                <div class="completion" style="width:${compPct}%"></div>
+              </div>
+              <span style="font-size:11px;color:var(--text-muted);white-space:nowrap;">${formatNumber(r.promptTokens)} / ${formatNumber(r.completionTokens)}</span>
+            </div>
+          </td>
+          <td style="font-weight:600;">${formatNumber(r.totalTokens)}</td>
+          <td style="font-family:monospace;color:var(--text-muted);">$${r.cost < 0.01 ? r.cost.toFixed(6) : r.cost.toFixed(4)}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // Status
+    document.getElementById('statusDot').className = 'status-dot';
+    document.getElementById('statusText').textContent = 'Connected';
+    document.getElementById('lastUpdate').textContent = 'Last updated ' + new Date().toLocaleTimeString();
+
+  } catch (err) {
+    document.getElementById('statusDot').className = 'status-dot error';
+    document.getElementById('statusText').textContent = 'Disconnected';
+  }
+}
+
+// Page switching
+function switchPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+  const target = document.getElementById('page-' + page);
+  target.style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  document.querySelectorAll('.nav-item[data-page]').forEach(n => n.classList.remove('active'));
+  const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
+  if (navItem) navItem.classList.add('active');
+
+  if (page === 'policies') fetchPolicies();
+  if (page === 'traces') fetchTraces();
+  if (page === 'edge') fetchEdgeMetrics();
+  if (page === 'providers') fetchProviders();
+  if (page === 'tenants') fetchTenants();
+  if (page === 'requests') fetchRequests();
+  if (page === 'cache') fetchCache();
+  if (page === 'violations') fetchViolations();
+  if (page === 'rollouts') fetchRollouts();
+  if (page === 'analytics') fetchAnalytics();
+  if (page === 'alerts') fetchAlerts();
+  if (page === 'budgets') fetchBudgets();
+  if (page === 'audit') fetchAudit();
+  if (page === 'federation') fetchFederation();
+  if (page === 'approvals') fetchApprovals();
+  if (page === 'evidence') fetchEvidence();
+  if (page === 'behavioral') fetchBehavioral();
+  if (page === 'manifests') fetchManifests();
+  if (page === 'policyVersions') fetchPolicyVersions();
+}
+
+async function fetchPolicies() {
+  try {
+    const resp = await fetch('/admin/v1/policies');
+    const data = await resp.json();
+    const input = data.filter(p => p.phase === 'input');
+    const output = data.filter(p => p.phase === 'output');
+    const blocking = data.filter(p => p.action === 'block');
+
+    document.getElementById('inputPolicyCount').textContent = input.length;
+    document.getElementById('outputPolicyCount').textContent = output.length;
+    document.getElementById('blockPolicyCount').textContent = blocking.length;
+
+    const actionColors = { block: 'var(--accent-red)', warn: 'var(--accent-orange)', log: 'var(--text-muted)' };
+    const phaseColors = { input: 'var(--accent-blue)', output: 'var(--accent-purple)' };
+
+    document.getElementById('policiesTable').innerHTML = data.map(p => {
+      const rules = (p.keywords || []).concat(p.patterns || []);
+      const maxShow = 3;
+      let rulesHTML = '';
+      if (rules.length === 0) {
+        rulesHTML = '<span style="opacity:0.4;">none</span>';
+      } else {
+        const visible = rules.slice(0, maxShow);
+        const remaining = rules.length - maxShow;
+        const ruleId = 'rules-' + p.name.replace(/[^a-z0-9]/gi, '-');
+        const codeStyle = 'background:var(--bg-elevated, var(--border));padding:4px 10px;border-radius:6px;font-size:11px;font-family:"JetBrains Mono",monospace;color:var(--text-secondary);white-space:nowrap;line-height:1.8;border:1px solid rgba(48,54,61,0.4);';
+        rulesHTML = `<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">` +
+          visible.map(r => `<code style="${codeStyle}">${r}</code>`).join('') +
+          (remaining > 0 ? `<span id="${ruleId}-toggle" onclick="document.getElementById('${ruleId}').style.display=document.getElementById('${ruleId}').style.display==='none'?'flex':'none';this.textContent=this.textContent.includes('+')?'show less':'+${remaining} more'" style="cursor:pointer;font-size:11px;color:var(--accent-blue);font-weight:500;padding:4px 10px;background:rgba(88,166,255,0.08);border-radius:6px;border:1px solid rgba(88,166,255,0.15);line-height:1.8;">+${remaining} more</span>` +
+            `<div id="${ruleId}" style="display:none;flex-wrap:wrap;gap:6px;width:100%;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">` +
+            rules.slice(maxShow).map(r => `<code style="${codeStyle}">${r}</code>`).join('') +
+            `</div>` : '') +
+          `</div>`;
+      }
+      return `<tr>
+        <td style="font-weight:600;">${p.name}</td>
+        <td><span class="badge" style="background:${phaseColors[p.phase]}18;color:${phaseColors[p.phase]}">${p.type}</span></td>
+        <td><span class="badge" style="background:${phaseColors[p.phase]}18;color:${phaseColors[p.phase]}">${p.phase}</span></td>
+        <td><span class="badge" style="background:${actionColors[p.action]}18;color:${actionColors[p.action]};font-weight:600;">${p.action.toUpperCase()}</span></td>
+        <td style="max-width:500px;">${rulesHTML}</td>
+      </tr>`;
+    }).join('');
+  } catch (err) { console.error('Failed to fetch policies', err); }
+}
+
+async function fetchProviders() {
+  try {
+    const resp = await fetch('/admin/v1/providers');
+    const data = await resp.json();
+    const typeColors = { mock: COLORS.green, openai: COLORS.orange, anthropic: COLORS.purple, ollama: COLORS.cyan };
+    const typeLabels = { mock: 'Local Mock', openai: 'Cloud API', anthropic: 'Cloud API', ollama: 'Local Inference' };
+
+    document.getElementById('providerCards').innerHTML = data.map(p => `
+      <div class="stat-card" style="padding:24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:10px;height:10px;border-radius:50%;background:${p.enabled ? (p.healthy ? COLORS.green : COLORS.red) : COLORS.orange};"></div>
+            <div>
+              <div style="font-size:16px;font-weight:700;">${p.name}</div>
+              <div style="font-size:11px;color:var(--text-muted);">${typeLabels[p.type] || p.type}</div>
+              ${p.region ? '<div style="font-size:10px;margin-top:2px;"><span class="badge" style="background:#6366f118;color:#6366f1;font-size:10px;">'+p.region+'</span></div>' : ''}
+            </div>
+          </div>
+          <span class="badge" style="background:${p.enabled ? '#22c55e18' : '#ef444418'};color:${p.enabled ? COLORS.green : COLORS.red};font-weight:600;">
+            ${p.enabled ? 'ENABLED' : 'DISABLED'}
+          </span>
+        </div>
+        ${p.base_url ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;"><span style="color:var(--text-secondary);">Endpoint:</span> <code style="background:var(--border);padding:1px 6px;border-radius:3px;">${p.base_url}</code></div>` : ''}
+        ${p.models && p.models.length > 0 ? `<div style="font-size:12px;color:var(--text-muted);"><span style="color:var(--text-secondary);">Models:</span> ${p.models.map(m => '<span class="badge badge-model" style="margin:2px;">' + m + '</span>').join(' ')}</div>` : ''}
+        <div style="margin-top:12px;font-size:12px;">
+          <span style="color:var(--text-secondary);">Health:</span>
+          <span style="color:${p.healthy ? COLORS.green : COLORS.red};font-weight:600;">${p.healthy ? 'Healthy' : 'Unhealthy'}</span>
+        </div>
+      </div>
+    `).join('');
+  } catch (err) { console.error('Failed to fetch providers', err); }
+}
+
+async function fetchTenants() {
+  try {
+    const resp = await fetch('/admin/v1/tenants');
+    const tenants = await resp.json();
+    const usageResp = await fetch('/admin/v1/usage');
+    const usage = await usageResp.json();
+
+    document.getElementById('tenantCards').innerHTML = tenants.map(t => {
+      const u = usage[t.id] || { total_requests: 0, total_tokens: 0, estimated_cost_usd: 0 };
+      return `
+      <div class="stat-card" style="padding:24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div>
+            <div style="font-size:16px;font-weight:700;">${t.name}</div>
+            <div style="font-size:11px;color:var(--text-muted);">ID: ${t.id}</div>
+          </div>
+          <span class="badge badge-tenant">${t.key_count} API key${t.key_count !== 1 ? 's' : ''}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+          <div style="background:var(--bg-primary);padding:12px;border-radius:8px;">
+            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Rate Limit</div>
+            <div style="font-size:15px;font-weight:700;margin-top:4px;">${t.requests_per_minute.toLocaleString()}</div>
+            <div style="font-size:10px;color:var(--text-muted);">req/min</div>
+          </div>
+          <div style="background:var(--bg-primary);padding:12px;border-radius:8px;">
+            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Token Limit</div>
+            <div style="font-size:15px;font-weight:700;margin-top:4px;">${formatNumber(t.tokens_per_minute)}</div>
+            <div style="font-size:10px;color:var(--text-muted);">tok/min</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div style="text-align:center;padding:8px;background:var(--bg-primary);border-radius:6px;">
+            <div style="font-size:14px;font-weight:700;color:var(--accent-green);">${u.total_requests.toLocaleString()}</div>
+            <div style="font-size:10px;color:var(--text-muted);">Requests</div>
+          </div>
+          <div style="text-align:center;padding:8px;background:var(--bg-primary);border-radius:6px;">
+            <div style="font-size:14px;font-weight:700;color:var(--accent-blue);">${u.total_tokens.toLocaleString()}</div>
+            <div style="font-size:10px;color:var(--text-muted);">Tokens</div>
+          </div>
+          <div style="text-align:center;padding:8px;background:var(--bg-primary);border-radius:6px;">
+            <div style="font-size:14px;font-weight:700;color:var(--accent-purple);">$${u.estimated_cost_usd.toFixed(4)}</div>
+            <div style="font-size:10px;color:var(--text-muted);">Cost</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;font-size:11px;color:var(--text-muted);">
+          Models: ${(t.allowed_models || []).map(m => '<code style="background:var(--border);padding:1px 5px;border-radius:3px;font-size:10px;">' + m + '</code>').join(' ') || '<span style="color:var(--text-muted);">all</span>'}
+        </div>
+      </div>`;
+    }).join('');
+  } catch (err) { console.error('Failed to fetch tenants', err); }
+}
+
+async function fetchViolations() {
+  try {
+    const resp = await fetch('/admin/v1/violations');
+    const data = await resp.json();
+    const entries = data || [];
+
+    document.getElementById('violationTotal').textContent = entries.length;
+    const policies = new Set(entries.map(e => e.policy_hit));
+    document.getElementById('violationPolicies').textContent = policies.size;
+    const tenants = new Set(entries.map(e => e.tenant_id));
+    document.getElementById('violationTenants').textContent = tenants.size;
+    document.getElementById('violationCount').textContent = entries.length + ' entries';
+
+    const tbody = document.getElementById('violationTable');
+    if (entries.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>No policy violations recorded</p></td></tr>';
+    } else {
+      tbody.innerHTML = entries.map(r => {
+        const time = new Date(r.timestamp).toLocaleTimeString();
+        const statusColor = r.status === 403 ? 'var(--accent-red)' : 'var(--accent-orange)';
+        return `<tr>
+          <td style="font-size:12px;color:var(--text-muted);white-space:nowrap;">${time}</td>
+          <td><span class="badge" style="background:#ef444418;color:var(--accent-red);font-weight:600;">${r.policy_hit}</span></td>
+          <td><span class="badge badge-tenant">${r.tenant_id || '-'}</span></td>
+          <td><span class="badge ${getModelBadgeClass(r.model || '')}">${r.model || '-'}</span></td>
+          <td><span style="color:${statusColor};font-weight:600;">${r.status}</span></td>
+          <td><span style="color:var(--text-muted);">${r.latency_ms}ms</span></td>
+        </tr>`;
+      }).join('');
+    }
+  } catch (err) { console.error('Failed to fetch violations', err); }
+}
+
+setInterval(() => {
+  const vPage = document.getElementById('page-violations');
+  if (vPage && vPage.style.display !== 'none') fetchViolations();
+}, 3000);
+
+let cacheChart2 = null;
+const cacheHistory = { labels: [], hits: [], misses: [] };
+
+async function fetchCache() {
+  try {
+    const resp = await fetch('/admin/v1/cache');
+    const data = await resp.json();
+
+    document.getElementById('cacheHits').textContent = formatNumber(data.hits || 0);
+    document.getElementById('cacheMisses').textContent = formatNumber(data.misses || 0);
+    const total = (data.hits || 0) + (data.misses || 0);
+    const rate = total > 0 ? Math.round(data.hits / total * 100) : 0;
+    document.getElementById('cacheHitRate').textContent = rate + '%';
+    document.getElementById('cacheSize').textContent = (data.size || 0) + ' / ' + (data.max_size || 0);
+    document.getElementById('cacheEvictions').textContent = formatNumber(data.evictions || 0);
+    document.getElementById('cacheTTL').textContent = data.ttl || '--';
+
+    // Update chart
+    const now = new Date().toLocaleTimeString();
+    cacheHistory.labels.push(now);
+    cacheHistory.hits.push(data.hits || 0);
+    cacheHistory.misses.push(data.misses || 0);
+    if (cacheHistory.labels.length > 20) {
+      cacheHistory.labels.shift();
+      cacheHistory.hits.shift();
+      cacheHistory.misses.shift();
+    }
+
+    if (!cacheChart2) {
+      cacheChart2 = new Chart(document.getElementById('cacheChart'), {
+        type: 'line',
+        data: {
+          labels: cacheHistory.labels,
+          datasets: [
+            { label: 'Hits', data: cacheHistory.hits, borderColor: COLORS.green, backgroundColor: COLORS.green + '20', fill: true, tension: 0.3, pointRadius: 2 },
+            { label: 'Misses', data: cacheHistory.misses, borderColor: COLORS.orange, backgroundColor: COLORS.orange + '20', fill: true, tension: 0.3, pointRadius: 2 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } } },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#64748b', maxTicksLimit: 10 } },
+            y: { grid: { color: '#1e293b40' }, ticks: { font: { size: 10 }, color: '#64748b' } }
+          }
+        }
+      });
+    } else {
+      cacheChart2.data.labels = cacheHistory.labels;
+      cacheChart2.data.datasets[0].data = cacheHistory.hits;
+      cacheChart2.data.datasets[1].data = cacheHistory.misses;
+      cacheChart2.update('none');
+    }
+  } catch (err) { console.error('Failed to fetch cache stats', err); }
+}
+
+// Auto-refresh cache when on cache page
+setInterval(() => {
+  const cachePage = document.getElementById('page-cache');
+  if (cachePage && cachePage.style.display !== 'none') fetchCache();
+}, 3000);
+
+let feedInterval = null;
+
+async function fetchRequests() {
+  try {
+    const resp = await fetch('/admin/v1/requests');
+    const data = await resp.json();
+
+    const entries = data || [];
+    const total = entries.length;
+    const cached = entries.filter(r => r.cached).length;
+    const policyHits = entries.filter(r => r.policy_hit).length;
+    const avgLatency = total > 0 ? Math.round(entries.reduce((sum, r) => sum + r.latency_ms, 0) / total) : 0;
+    const cacheRate = total > 0 ? Math.round(cached / total * 100) : 0;
+
+    document.getElementById('feedTotal').textContent = total;
+    document.getElementById('feedAvgLatency').textContent = avgLatency + 'ms';
+    document.getElementById('feedCacheRate').textContent = cacheRate + '%';
+    document.getElementById('feedPolicyHits').textContent = policyHits;
+    document.getElementById('feedCount').textContent = total + ' entries';
+
+    const tbody = document.getElementById('feedTable');
+    if (total === 0) {
+      tbody.innerHTML = '<tr><td colspan="12" class="empty-state"><p>No requests yet</p></td></tr>';
+    } else {
+      tbody.innerHTML = entries.map(r => {
+        const time = new Date(r.timestamp).toLocaleTimeString();
+        const statusColor = r.status < 300 ? 'var(--accent-green)' : r.status < 500 ? 'var(--accent-orange)' : 'var(--accent-red)';
+        const latencyColor = r.latency_ms < 200 ? 'var(--accent-green)' : r.latency_ms < 1000 ? 'var(--accent-orange)' : 'var(--accent-red)';
+        const score = r.quality_score || 0;
+        const scoreColor = score > 80 ? 'var(--accent-green)' : score > 50 ? 'var(--accent-orange)' : 'var(--accent-red)';
+        return `<tr>
+          <td style="font-size:12px;color:var(--text-muted);white-space:nowrap;">${time}</td>
+          <td style="font-size:11px;font-family:monospace;color:var(--text-muted);">${(r.request_id || '').substring(0, 12)}...</td>
+          <td><span class="badge badge-tenant">${r.tenant_id || '-'}</span></td>
+          <td><span class="badge ${getModelBadgeClass(r.model || '')}">${r.model || '-'}</span></td>
+          <td><span style="font-size:12px;color:var(--text-secondary);">${r.region || '-'}</span></td>
+          <td><span style="font-size:12px;color:var(--text-secondary);">${r.data_plane || '-'}</span></td>
+          <td><span style="color:${statusColor};font-weight:600;">${r.status}</span></td>
+          <td><span style="color:${latencyColor};font-weight:500;">${r.latency_ms}ms</span></td>
+          <td style="font-weight:500;">${formatNumber(r.tokens || 0)}</td>
+          <td>${r.cached ? '<span style="color:var(--accent-green);font-weight:600;">HIT</span>' : '<span style="color:var(--text-muted);">MISS</span>'}</td>
+          <td>${r.policy_hit ? '<span class="badge" style="background:#ef444418;color:var(--accent-red);font-weight:600;">' + r.policy_hit + '</span>' : '<span style="color:var(--text-muted);">-</span>'}</td>
+          <td><span style="color:${scoreColor};font-weight:600;">${score}</span></td>
+        </tr>`;
+      }).join('');
+    }
+
+    // Auto-refresh if on requests page
+    if (!feedInterval) {
+      feedInterval = setInterval(() => {
+        const reqPage = document.getElementById('page-requests');
+        if (reqPage && reqPage.style.display !== 'none') fetchRequests();
+      }, 2000);
+    }
+  } catch (err) { console.error('Failed to fetch requests', err); }
+}
+
+async function fetchRollouts() {
+  try {
+    const resp = await fetch('/admin/v1/rollouts');
+    const data = await resp.json();
+    const rollouts = data || [];
+
+    const activeStates = ['running', 'paused', 'pending'];
+    const active = rollouts.filter(r => activeStates.includes(r.state));
+    const history = rollouts.filter(r => r.state === 'completed' || r.state === 'rolled_back');
+
+    // Stats
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const completedWeek = history.filter(r => r.state === 'completed' && new Date(r.updated_at) >= weekAgo).length;
+    const rolledBackWeek = history.filter(r => r.state === 'rolled_back' && new Date(r.updated_at) >= weekAgo).length;
+
+    document.getElementById('rolloutActive').textContent = active.length;
+    document.getElementById('rolloutCompletedWeek').textContent = completedWeek;
+    document.getElementById('rolloutRolledBackWeek').textContent = rolledBackWeek;
+
+    // Active rollout cards
+    const cardsEl = document.getElementById('rolloutActiveCards');
+    if (active.length === 0) {
+      cardsEl.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><p>No active rollouts</p><div class="hint">Start a canary rollout via the API</div></div>';
+    } else {
+      cardsEl.innerHTML = active.map(r => {
+        const stages = r.stages || [];
+        const currentStage = r.current_stage || 0;
+        const totalStages = stages.length || 1;
+        const progressPct = Math.round((currentStage / totalStages) * 100);
+        const currentPct = stages.length > 0 && currentStage > 0 ? stages[currentStage - 1].percentage : 0;
+        const baselineErr = r.baseline_error_rate != null ? (r.baseline_error_rate * 100).toFixed(2) + '%' : '--';
+        const canaryErr = r.canary_error_rate != null ? (r.canary_error_rate * 100).toFixed(2) + '%' : '--';
+        const baselineP95 = r.baseline_p95_ms != null ? r.baseline_p95_ms.toFixed(0) + 'ms' : '--';
+        const canaryP95 = r.canary_p95_ms != null ? r.canary_p95_ms.toFixed(0) + 'ms' : '--';
+        const stateColor = r.state === 'running' ? 'var(--accent-green)' : r.state === 'paused' ? 'var(--accent-orange)' : 'var(--accent-blue)';
+        const stateBg = r.state === 'running' ? '#22c55e18' : r.state === 'paused' ? '#f59e0b18' : '#3b82f618';
+
+        return `<div class="stat-card" style="padding:24px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <div>
+              <div style="font-size:16px;font-weight:700;">${r.route_model || r.id}</div>
+              <div style="font-size:11px;color:var(--text-muted);">Canary: <span style="color:var(--accent-cyan);font-weight:600;">${r.canary_provider || '--'}</span></div>
+            </div>
+            <span class="badge" style="background:${stateBg};color:${stateColor};font-weight:600;text-transform:uppercase;">${r.state}</span>
+          </div>
+          <div style="margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+              <span style="font-size:11px;color:var(--text-muted);">Stage ${currentStage} / ${totalStages}</span>
+              <span style="font-size:11px;color:var(--text-muted);">${progressPct}%</span>
+            </div>
+            <div style="height:8px;border-radius:4px;background:var(--border);overflow:hidden;">
+              <div style="height:100%;width:${progressPct}%;background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));border-radius:4px;transition:width 0.6s cubic-bezier(0.2,0,0,1);"></div>
+            </div>
+          </div>
+          <div style="text-align:center;margin-bottom:16px;">
+            <div style="font-size:42px;font-weight:800;letter-spacing:-2px;color:var(--accent-cyan);font-variant-numeric:tabular-nums;">${currentPct}%</div>
+            <div style="font-size:11px;color:var(--text-muted);">Current canary traffic</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div style="background:var(--bg-primary);padding:12px;border-radius:8px;">
+              <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Error Rate</div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;">
+                <div><span style="font-size:10px;color:var(--text-muted);">Base</span> <span style="font-size:13px;font-weight:600;">${baselineErr}</span></div>
+                <div><span style="font-size:10px;color:var(--text-muted);">Canary</span> <span style="font-size:13px;font-weight:600;color:var(--accent-cyan);">${canaryErr}</span></div>
+              </div>
+            </div>
+            <div style="background:var(--bg-primary);padding:12px;border-radius:8px;">
+              <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">P95 Latency</div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;">
+                <div><span style="font-size:10px;color:var(--text-muted);">Base</span> <span style="font-size:13px;font-weight:600;">${baselineP95}</span></div>
+                <div><span style="font-size:10px;color:var(--text-muted);">Canary</span> <span style="font-size:13px;font-weight:600;color:var(--accent-cyan);">${canaryP95}</span></div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="rolloutAction('${r.id}','pause')" style="flex:1;padding:8px;border:1px solid var(--accent-orange);background:rgba(245,158,11,0.08);color:var(--accent-orange);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;transition:all 0.15s;">Pause</button>
+            <button onclick="rolloutAction('${r.id}','rollback')" style="flex:1;padding:8px;border:1px solid var(--accent-red);background:rgba(239,68,68,0.08);color:var(--accent-red);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;transition:all 0.15s;">Rollback</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // History table
+    const tbody = document.getElementById('rolloutHistoryTable');
+    document.getElementById('rolloutHistoryCount').textContent = history.length + ' entries';
+    if (history.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><p>No rollout history yet</p></td></tr>';
+    } else {
+      tbody.innerHTML = history.map(r => {
+        const stateColor = r.state === 'completed' ? 'var(--accent-green)' : 'var(--accent-red)';
+        const stateBg = r.state === 'completed' ? '#22c55e18' : '#ef444418';
+        const stageInfo = r.stages || [];
+        const finalPct = stageInfo.length > 0 ? stageInfo[stageInfo.length - 1].percentage + '%' : '--';
+        const errRate = r.canary_error_rate != null ? (r.canary_error_rate * 100).toFixed(2) + '%' : '--';
+        const p95 = r.canary_p95_ms != null ? r.canary_p95_ms.toFixed(0) + 'ms' : '--';
+        const completedAt = r.updated_at ? new Date(r.updated_at).toLocaleDateString() : '--';
+        return `<tr>
+          <td style="font-weight:600;">${r.route_model || r.id}</td>
+          <td><span class="badge badge-ollama">${r.canary_provider || '--'}</span></td>
+          <td><span class="badge" style="background:${stateBg};color:${stateColor};font-weight:600;text-transform:uppercase;">${r.state.replace('_', ' ')}</span></td>
+          <td style="font-weight:600;">${finalPct}</td>
+          <td>${errRate}</td>
+          <td>${p95}</td>
+          <td style="font-size:12px;color:var(--text-muted);">${completedAt}</td>
+        </tr>`;
+      }).join('');
+    }
+  } catch (err) { console.error('Failed to fetch rollouts', err); }
+}
+
+async function rolloutAction(id, action) {
+  try {
+    await fetch('/admin/v1/rollouts/' + id + '/' + action, { method: 'POST' });
+    fetchRollouts();
+  } catch (err) { console.error('Rollout action failed', err); }
+}
+
+// Auto-refresh rollouts when on rollouts page
+setInterval(() => {
+  const rolloutPage = document.getElementById('page-rollouts');
+  if (rolloutPage && rolloutPage.style.display !== 'none') fetchRollouts();
+}, 3000);
+
+// --- Analytics ---
+let analyticsChart2 = null;
+const analyticsHistory = { labels: [], rates: [] };
+
+async function fetchAnalytics() {
+  try {
+    const resp = await fetch('/admin/v1/analytics/realtime');
+    const data = await resp.json();
+    const dimensions = data.dimensions || {};
+    const keys = Object.keys(dimensions);
+
+    let totalReqs = 0, errorRateSum = 0, p95Sum = 0, count = 0;
+    keys.forEach(k => {
+      const d = dimensions[k];
+      totalReqs += d.request_count || 0;
+      errorRateSum += d.error_rate || 0;
+      p95Sum += d.p95_latency_ms || 0;
+      count++;
+    });
+
+    const avgError = count > 0 ? (errorRateSum / count * 100).toFixed(2) : '0.00';
+    const avgP95 = count > 0 ? Math.round(p95Sum / count) : 0;
+
+    document.getElementById('analyticsRequests').textContent = formatNumber(totalReqs);
+    document.getElementById('analyticsErrorRate').textContent = avgError + '%';
+    document.getElementById('analyticsP95').textContent = avgP95 + 'ms';
+    document.getElementById('analyticsDimensions').textContent = keys.length;
+
+    // Update chart
+    const now = new Date().toLocaleTimeString();
+    analyticsHistory.labels.push(now);
+    analyticsHistory.rates.push(totalReqs);
+    if (analyticsHistory.labels.length > 30) {
+      analyticsHistory.labels.shift();
+      analyticsHistory.rates.shift();
+    }
+
+    if (!analyticsChart2) {
+      analyticsChart2 = new Chart(document.getElementById('analyticsChart'), {
+        type: 'line',
+        data: {
+          labels: analyticsHistory.labels,
+          datasets: [{
+            label: 'Requests',
+            data: analyticsHistory.rates,
+            borderColor: COLORS.blue,
+            backgroundColor: COLORS.blue + '20',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 2
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } } },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#64748b', maxTicksLimit: 10 } },
+            y: { grid: { color: '#1e293b40' }, ticks: { font: { size: 10 }, color: '#64748b' } }
+          }
+        }
+      });
+    } else {
+      analyticsChart2.data.labels = analyticsHistory.labels;
+      analyticsChart2.data.datasets[0].data = analyticsHistory.rates;
+      analyticsChart2.update('none');
+    }
+  } catch (err) { console.error('Failed to fetch analytics', err); }
+}
+
+// Auto-refresh analytics when on analytics page
+setInterval(() => {
+  const analyticsPage = document.getElementById('page-analytics');
+  if (analyticsPage && analyticsPage.style.display !== 'none') fetchAnalytics();
+}, 3000);
+
+// --- Alerts ---
+async function fetchAlerts() {
+  try {
+    const resp = await fetch('/admin/v1/alerts');
+    const data = await resp.json();
+    const alerts = data || [];
+
+    const active = alerts.filter(a => a.state === 'firing' || a.state === 'active');
+    const critical = alerts.filter(a => a.severity === 'critical' && (a.state === 'firing' || a.state === 'active'));
+    const warnings = alerts.filter(a => a.severity === 'warning' && (a.state === 'firing' || a.state === 'active'));
+
+    document.getElementById('alertsActive').textContent = active.length;
+    document.getElementById('alertsCritical').textContent = critical.length;
+    document.getElementById('alertsWarnings').textContent = warnings.length;
+    document.getElementById('alertsCount').textContent = alerts.length + ' entries';
+
+    const tbody = document.getElementById('alertsTable');
+    if (alerts.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><p>No alerts</p><div class="hint">Alerts appear when metrics exceed configured thresholds</div></td></tr>';
+    } else {
+      tbody.innerHTML = alerts.map(a => {
+        const time = a.fired_at ? new Date(a.fired_at).toLocaleTimeString() : '--';
+        const sevColor = a.severity === 'critical' ? 'var(--accent-red)' : 'var(--accent-orange)';
+        const sevBg = a.severity === 'critical' ? '#ef444418' : '#f59e0b18';
+        const stateColor = (a.state === 'firing' || a.state === 'active') ? 'var(--accent-red)' : a.state === 'acknowledged' ? 'var(--accent-orange)' : 'var(--accent-green)';
+        const stateBg = (a.state === 'firing' || a.state === 'active') ? '#ef444418' : a.state === 'acknowledged' ? '#f59e0b18' : '#22c55e18';
+        const canAck = a.state === 'firing' || a.state === 'active';
+        return `<tr>
+          <td style="font-size:12px;color:var(--text-muted);white-space:nowrap;">${time}</td>
+          <td><span class="badge" style="background:${sevBg};color:${sevColor};font-weight:600;text-transform:uppercase;">${a.severity || '--'}</span></td>
+          <td style="font-size:12px;">${a.dimension || '--'}</td>
+          <td style="font-size:12px;font-family:'JetBrains Mono',monospace;">${a.metric || '--'}</td>
+          <td style="font-weight:600;">${a.value != null ? a.value.toFixed(2) : '--'}</td>
+          <td style="color:var(--text-muted);">${a.threshold != null ? a.threshold.toFixed(2) : '--'}</td>
+          <td style="font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.message || '--'}</td>
+          <td><span class="badge" style="background:${stateBg};color:${stateColor};font-weight:600;text-transform:uppercase;">${a.state || '--'}</span></td>
+          <td>${canAck ? '<button onclick="acknowledgeAlert(\'' + a.id + '\')" style="padding:5px 12px;border:1px solid var(--accent-blue);background:rgba(88,166,255,0.08);color:var(--accent-blue);border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;transition:all 0.15s;">Ack</button>' : '<span style="color:var(--text-muted);font-size:11px;">--</span>'}</td>
+        </tr>`;
+      }).join('');
+    }
+  } catch (err) { console.error('Failed to fetch alerts', err); }
+}
+
+async function acknowledgeAlert(id) {
+  try {
+    await fetch('/admin/v1/alerts/' + id + '/acknowledge', { method: 'POST' });
+    fetchAlerts();
+  } catch (err) { console.error('Failed to acknowledge alert', err); }
+}
+
+// Auto-refresh alerts when on alerts page
+setInterval(() => {
+  const alertsPage = document.getElementById('page-alerts');
+  if (alertsPage && alertsPage.style.display !== 'none') fetchAlerts();
+}, 3000);
+
+// --- Budgets ---
+async function fetchBudgets() {
+  try {
+    const resp = await fetch('/admin/v1/budgets');
+    const data = await resp.json();
+    const statuses = data.statuses || [];
+    const forecasts = data.forecasts || [];
+
+    document.getElementById('budgetTotalScopes').textContent = statuses.length;
+    document.getElementById('budgetOverWarn').textContent = statuses.filter(s => s.status === 'warn' || s.status === 'alert').length;
+    document.getElementById('budgetBlocked').textContent = statuses.filter(s => s.status === 'blocked').length;
+
+    const container = document.getElementById('budgetCards');
+    if (statuses.length === 0) {
+      container.innerHTML = '<div class="stat-card" style="grid-column:1/-1; text-align:center; padding:40px;"><p style="color:var(--text-secondary);">No budget scopes configured</p><div style="color:var(--text-muted); font-size:12px; margin-top:8px;">Configure budget scopes in aegisflow.yaml to track spend</div></div>';
+      return;
+    }
+
+    const forecastMap = {};
+    forecasts.forEach(f => { forecastMap[f.scope_id] = f; });
+
+    container.innerHTML = statuses.map(s => {
+      const pct = Math.min(s.percentage, 100).toFixed(1);
+      let barColor = 'var(--accent-green)';
+      if (s.percentage >= 100) barColor = 'var(--accent-red)';
+      else if (s.percentage >= 90) barColor = 'var(--accent-orange)';
+      else if (s.percentage >= 80) barColor = 'var(--accent-orange)'; // yellow-ish
+
+      let statusBadge = '';
+      if (s.status === 'blocked') statusBadge = '<span style="color:var(--accent-red); font-weight:600; font-size:11px; background:rgba(248,81,73,0.1); padding:2px 8px; border-radius:4px;">BLOCKED</span>';
+      else if (s.status === 'warn') statusBadge = '<span style="color:var(--accent-orange); font-weight:600; font-size:11px; background:rgba(210,153,34,0.1); padding:2px 8px; border-radius:4px;">WARNING</span>';
+      else if (s.status === 'alert') statusBadge = '<span style="color:#d29922; font-weight:600; font-size:11px; background:rgba(210,153,34,0.1); padding:2px 8px; border-radius:4px;">ALERT</span>';
+      else statusBadge = '<span style="color:var(--accent-green); font-weight:600; font-size:11px; background:rgba(63,185,80,0.1); padding:2px 8px; border-radius:4px;">NORMAL</span>';
+
+      const fc = forecastMap[s.scope_id];
+      let forecastHtml = '';
+      if (fc) {
+        const exceedIcon = fc.will_exceed
+          ? '<span style="color:var(--accent-red);">&#9650; Will exceed</span>'
+          : '<span style="color:var(--accent-green);">&#9660; Within budget</span>';
+        forecastHtml = '<div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border); font-size:12px; color:var(--text-secondary); display:flex; justify-content:space-between;">'
+          + '<span>Projected: $' + fc.projected_total.toFixed(2) + '</span>'
+          + '<span>' + fc.days_remaining + 'd remaining</span>'
+          + exceedIcon
+          + '</div>';
+      }
+
+      return '<div class="stat-card" style="padding:20px;">'
+        + '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">'
+        + '<div><div style="font-size:14px; font-weight:600;">' + s.scope_id + '</div>'
+        + '<div style="font-size:11px; color:var(--text-muted); margin-top:2px;">' + s.scope + '</div></div>'
+        + statusBadge
+        + '</div>'
+        + '<div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;">'
+        + '<span style="color:var(--text-secondary);">$' + s.current_spend.toFixed(2) + ' / $' + s.limit.toFixed(2) + '</span>'
+        + '<span style="font-weight:600;">' + pct + '%</span>'
+        + '</div>'
+        + '<div style="background:var(--bg-elevated); border-radius:4px; height:8px; overflow:hidden;">'
+        + '<div style="height:100%; width:' + pct + '%; background:' + barColor + '; border-radius:4px; transition:width 0.3s;"></div>'
+        + '</div>'
+        + forecastHtml
+        + '</div>';
+    }).join('');
+  } catch (err) {
+    console.error('Failed to fetch budgets', err);
+  }
+}
+
+// Auto-refresh budgets when on budgets page
+setInterval(() => {
+  const budgetsPage = document.getElementById('page-budgets');
+  if (budgetsPage && budgetsPage.style.display !== 'none') fetchBudgets();
+}, 5000);
+
+// --- Audit Log ---
+let auditEntries = [];
+
+async function fetchAudit() {
+  try {
+    const resp = await fetch('/admin/v1/audit');
+    const data = await resp.json();
+    const tbody = document.getElementById('auditTableBody');
+    auditEntries = Array.isArray(data) ? data.slice() : [];
+    if (!data || data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-secondary); padding:40px;">No audit entries</td></tr>';
+      return;
+    }
+    const roleBadge = (role) => {
+      const colors = { admin: 'var(--accent-red)', operator: 'var(--accent-orange)', viewer: 'var(--accent-blue)', system: 'var(--accent-purple)' };
+      const color = colors[role] || 'var(--text-muted)';
+      return '<span style="background:' + color + '22; color:' + color + '; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:500;">' + (role || '-') + '</span>';
+    };
+    tbody.innerHTML = data.slice(-100).reverse().map(e => {
+      const ts = new Date(e.timestamp).toLocaleString();
+      return '<tr>' +
+        '<td style="font-family:JetBrains Mono,monospace; font-size:12px;">' + ts + '</td>' +
+        '<td>' + (e.actor || '-') + '</td>' +
+        '<td>' + roleBadge(e.actor_role) + '</td>' +
+        '<td><span style="font-weight:500;">' + (e.action || '-') + '</span></td>' +
+        '<td style="font-family:JetBrains Mono,monospace; font-size:12px;">' + (e.resource || '-') + '</td>' +
+        '<td>' + (e.tenant_id || '-') + '</td>' +
+        '</tr>';
+    }).join('');
+  } catch (err) {
+    console.error('Failed to fetch audit log', err);
+  }
+}
+
+function downloadAuditCSV() {
+  if (!auditEntries.length) return;
+  const escapeCSV = (value) => {
+    const text = value == null ? '' : String(value);
+    if (text.includes('"') || text.includes(',') || text.includes('\n')) {
+      return '"' + text.replace(/"/g, '""') + '"';
+    }
+    return text;
+  };
+  const rows = [
+    ['timestamp', 'actor', 'role', 'action', 'resource', 'tenant'],
+    ...auditEntries.map((e) => [
+      e.timestamp || '',
+      e.actor || '',
+      e.actor_role || '',
+      e.action || '',
+      e.resource || '',
+      e.tenant_id || ''
+    ])
+  ];
+  const csv = rows.map((row) => row.map(escapeCSV).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'audit-log.csv';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+async function verifyAudit() {
+  const resultDiv = document.getElementById('auditVerifyResult');
+  resultDiv.style.display = 'block';
+  resultDiv.style.background = 'var(--bg-elevated)';
+  resultDiv.style.border = '1px solid var(--border)';
+  resultDiv.textContent = 'Verifying audit log integrity...';
+  try {
+    const resp = await fetch('/admin/v1/audit/verify', { method: 'POST' });
+    const data = await resp.json();
+    if (data.valid) {
+      resultDiv.style.background = 'rgba(63, 185, 80, 0.1)';
+      resultDiv.style.border = '1px solid rgba(63, 185, 80, 0.3)';
+      resultDiv.style.color = 'var(--accent-green)';
+      resultDiv.textContent = data.message + (data.total_entries ? ' (' + data.total_entries + ' entries)' : '');
+    } else {
+      resultDiv.style.background = 'rgba(248, 81, 73, 0.1)';
+      resultDiv.style.border = '1px solid rgba(248, 81, 73, 0.3)';
+      resultDiv.style.color = 'var(--accent-red)';
+      resultDiv.textContent = 'INTEGRITY FAILURE: ' + data.message;
+    }
+  } catch (err) {
+    resultDiv.style.background = 'rgba(248, 81, 73, 0.1)';
+    resultDiv.style.border = '1px solid rgba(248, 81, 73, 0.3)';
+    resultDiv.style.color = 'var(--accent-red)';
+    resultDiv.textContent = 'Verification failed: ' + err.message;
+  }
+}
+
+// Auto-refresh audit when on audit page
+setInterval(() => {
+  const auditPage = document.getElementById('page-audit');
+  if (auditPage && auditPage.style.display !== 'none') fetchAudit();
+}, 5000);
+
+async function fetchOverviewStatus() {
+  // Alerts
+  try {
+    const alertResp = await fetch('/admin/v1/alerts');
+    const alerts = await alertResp.json();
+    const activeAlerts = (alerts || []).filter(a => a.state === 'active');
+    const critical = activeAlerts.filter(a => a.severity === 'critical').length;
+    const warnings = activeAlerts.filter(a => a.severity === 'warning').length;
+    document.getElementById('overviewAlerts').textContent = activeAlerts.length;
+    if (activeAlerts.length === 0) {
+      document.getElementById('overviewAlerts').style.color = 'var(--accent-green)';
+      document.getElementById('overviewAlertDetail').textContent = 'All clear';
+    } else if (critical > 0) {
+      document.getElementById('overviewAlerts').style.color = 'var(--accent-red)';
+      document.getElementById('overviewAlertDetail').textContent = critical + ' critical, ' + warnings + ' warning';
+    } else {
+      document.getElementById('overviewAlerts').style.color = 'var(--accent-orange)';
+      document.getElementById('overviewAlertDetail').textContent = warnings + ' warning' + (warnings !== 1 ? 's' : '');
+    }
+  } catch (e) {}
+
+  // Rollouts
+  try {
+    const rollResp = await fetch('/admin/v1/rollouts');
+    const rollouts = await rollResp.json();
+    const active = (rollouts || []).filter(r => r.state === 'running' || r.state === 'paused');
+    document.getElementById('overviewRollouts').textContent = active.length;
+    if (active.length === 0) {
+      document.getElementById('overviewRolloutDetail').textContent = 'No active rollouts';
+    } else {
+      const names = active.map(r => r.route_model + ' → ' + r.canary_provider + ' (' + r.current_percentage + '%)');
+      document.getElementById('overviewRolloutDetail').textContent = names[0];
+    }
+  } catch (e) {}
+
+  // Budgets
+  try {
+    const budgetResp = await fetch('/admin/v1/budgets');
+    const budgetData = await budgetResp.json();
+    const statuses = budgetData.statuses || budgetData || [];
+    const blocked = (Array.isArray(statuses) ? statuses : []).filter(b => b.status === 'blocked').length;
+    const warned = (Array.isArray(statuses) ? statuses : []).filter(b => b.status === 'warn' || b.status === 'alert').length;
+    if (blocked > 0) {
+      document.getElementById('overviewBudget').textContent = 'OVER';
+      document.getElementById('overviewBudget').style.color = 'var(--accent-red)';
+      document.getElementById('overviewBudgetDetail').textContent = blocked + ' budget' + (blocked > 1 ? 's' : '') + ' exhausted';
+    } else if (warned > 0) {
+      document.getElementById('overviewBudget').textContent = 'WARN';
+      document.getElementById('overviewBudget').style.color = 'var(--accent-orange)';
+      document.getElementById('overviewBudgetDetail').textContent = warned + ' budget' + (warned > 1 ? 's' : '') + ' near limit';
+    } else {
+      document.getElementById('overviewBudget').textContent = 'OK';
+      document.getElementById('overviewBudget').style.color = 'var(--accent-green)';
+      document.getElementById('overviewBudgetDetail').textContent = 'All budgets within limits';
+    }
+  } catch (e) {}
+
+  // Provider Regions
+  try {
+    const provResp = await fetch('/admin/v1/providers');
+    const providers = await provResp.json();
+    const regions = new Map();
+    for (const p of (providers || [])) {
+      const reg = p.region || 'default';
+      if (!regions.has(reg)) regions.set(reg, { total: 0, healthy: 0 });
+      regions.get(reg).total++;
+      if (p.healthy) regions.get(reg).healthy++;
+    }
+    document.getElementById('overviewRegions').textContent = regions.size;
+    if (regions.size === 0) {
+      document.getElementById('overviewRegionDetail').textContent = 'No providers configured';
+    } else {
+      const parts = [];
+      for (const [name, info] of regions) {
+        const status = info.healthy === info.total ? 'healthy' : info.healthy + '/' + info.total;
+        parts.push(name + ': ' + status);
+      }
+      document.getElementById('overviewRegionDetail').textContent = parts.join(' | ');
+    }
+  } catch (e) {}
+}
+
+async function fetchFederation() {
+  try {
+    const resp = await fetch('/admin/v1/federation/planes');
+    const planes = await resp.json();
+    const tbody = document.getElementById('federationTableBody');
+    if (!planes || planes.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-secondary); padding:40px;">No data planes registered</td></tr>';
+      return;
+    }
+    tbody.innerHTML = planes.map(p => {
+      const healthDot = p.healthy
+        ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent-green);margin-right:6px;"></span>Healthy'
+        : '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent-red);margin-right:6px;"></span>Unhealthy';
+      const lastSeen = p.last_seen ? new Date(p.last_seen).toLocaleString() : '--';
+      const errRate = p.error_rate !== undefined ? (p.error_rate).toFixed(2) + '%' : '--';
+      return `<tr>
+        <td style="font-weight:500;">${p.name || '--'}</td>
+        <td>${healthDot}</td>
+        <td>${lastSeen}</td>
+        <td>${p.requests != null ? p.requests.toLocaleString() : '0'}</td>
+        <td>${errRate}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {}
+}
+
+// Auto-refresh federation page every 5s
+setInterval(() => {
+  const fedPage = document.getElementById('page-federation');
+  if (fedPage && fedPage.style.display !== 'none') fetchFederation();
+}, 5000);
+
+// Fetch current user role and hide action buttons for viewers
+let currentRole = 'viewer';
+async function fetchWhoami() {
+  try {
+    const resp = await fetch('/admin/v1/whoami');
+    if (resp.ok) {
+      const data = await resp.json();
+      currentRole = data.role || 'viewer';
+      // Update sidebar footer with role
+      const statusRow = document.querySelector('.sidebar-footer .status-row');
+      if (statusRow && !document.getElementById('roleDisplay')) {
+        const roleEl = document.createElement('div');
+        roleEl.id = 'roleDisplay';
+        roleEl.className = 'status-row';
+        roleEl.style.marginTop = '6px';
+        roleEl.innerHTML = `<span style="font-size:11px;color:var(--text-secondary);">Role: <span style="color:var(--accent-blue);font-weight:600;">${currentRole}</span></span>`;
+        statusRow.parentElement.appendChild(roleEl);
+      }
+      // Hide action buttons for viewers
+      if (currentRole === 'viewer') {
+        document.querySelectorAll('[data-requires-role]').forEach(el => {
+          const req = el.getAttribute('data-requires-role');
+          if (req === 'operator' || req === 'admin') el.style.display = 'none';
+        });
+      }
+    }
+  } catch (e) {}
+}
+
+// --- Governance: Approvals ---
+async function fetchApprovals() {
+  try {
+    const resp = await fetch('/admin/v1/approvals');
+    const data = await resp.json();
+    const pending = data.pending || data || [];
+    const pendingList = Array.isArray(pending) ? pending : [];
+    document.getElementById('approvalsPendingCount').textContent = pendingList.length;
+    document.getElementById('approvalsPendingLabel').textContent = pendingList.length + ' items';
+
+    const histResp = await fetch('/admin/v1/approvals/history');
+    const histData = await histResp.json();
+    const history = Array.isArray(histData) ? histData : [];
+    document.getElementById('approvalsApprovedCount').textContent = history.filter(h => h.status === 'approved').length;
+
+    const tbody = document.getElementById('approvalsTable');
+    if (pendingList.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><p>No pending approvals</p></td></tr>';
+      return;
+    }
+    tbody.innerHTML = pendingList.map(item => {
+      const env = item.envelope || {};
+      const actor = env.actor || {};
+      const ts = item.submitted_at ? new Date(item.submitted_at).toLocaleString() : '-';
+      return `<tr>
+        <td><code>${(item.id || '').substring(0, 8)}...</code></td>
+        <td>${env.tool || '-'}</td>
+        <td><span class="badge">${env.protocol || '-'}</span></td>
+        <td>${env.target || '-'}</td>
+        <td>${actor.id || '-'}</td>
+        <td>${ts}</td>
+        <td>
+          <button onclick="approveItem('${item.id}')" style="background:var(--accent-green);color:#fff;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;margin-right:4px;font-size:12px;">Approve</button>
+          <button onclick="denyItem('${item.id}')" style="background:var(--accent-red);color:#fff;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px;">Deny</button>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch (e) { console.error('fetchApprovals:', e); }
+}
+
+async function approveItem(id) {
+  try {
+    await fetch('/admin/v1/approvals/' + id + '/approve', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({reviewer:'dashboard',comment:'Approved via dashboard'}) });
+    fetchApprovals();
+  } catch (e) { alert('Approve failed: ' + e.message); }
+}
+
+async function denyItem(id) {
+  const reason = prompt('Reason for denial:');
+  if (reason === null) return;
+  try {
+    await fetch('/admin/v1/approvals/' + id + '/deny', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({reviewer:'dashboard',comment:reason}) });
+    fetchApprovals();
+  } catch (e) { alert('Deny failed: ' + e.message); }
+}
+
+// --- Governance: Evidence ---
+async function fetchEvidence() {
+  try {
+    const resp = await fetch('/admin/v1/evidence/sessions');
+    const sessions = await resp.json();
+    const list = Array.isArray(sessions) ? sessions : [];
+    document.getElementById('evidenceSessionCount').textContent = list.length;
+
+    let totalActions = 0;
+    let allValid = true;
+    list.forEach(s => {
+      totalActions += (s.total_actions || 0);
+      if (s.chain_valid === false) allValid = false;
+    });
+    document.getElementById('evidenceActionCount').textContent = totalActions;
+    document.getElementById('evidenceChainStatus').textContent = allValid ? 'Valid' : 'INVALID';
+    document.getElementById('evidenceChainStatus').style.color = allValid ? 'var(--accent-green)' : 'var(--accent-red)';
+
+    const tbody = document.getElementById('evidenceTable');
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>No evidence sessions</p></td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(s => {
+      const valid = s.chain_valid !== false;
+      return `<tr>
+        <td><code>${s.session_id || '-'}</code></td>
+        <td>${s.total_actions || 0}</td>
+        <td>${s.allowed || 0}</td>
+        <td>${s.blocked || 0}</td>
+        <td style="color:${valid ? 'var(--accent-green)' : 'var(--accent-red)'}">${valid ? 'Valid' : 'INVALID'}</td>
+        <td><a href="/admin/v1/evidence/sessions/${s.session_id}/report.html" target="_blank" style="color:var(--accent-blue);text-decoration:none;">View Report</a></td>
+      </tr>`;
+    }).join('');
+  } catch (e) { console.error('fetchEvidence:', e); }
+}
+
+// --- Governance: Behavioral ---
+async function fetchBehavioral() {
+  try {
+    const resp = await fetch('/admin/v1/health/detailed');
+    const health = await resp.json();
+    // Behavioral data comes from individual session risk lookups
+    // For the overview, show what we can from the health endpoint
+    document.getElementById('behavioralSessionCount').textContent = '-';
+    document.getElementById('behavioralAtRisk').textContent = '-';
+    document.getElementById('behavioralBlocked').textContent = '-';
+
+    const tbody = document.getElementById('behavioralTable');
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><p>Behavioral monitoring active</p><div class="hint">Session risk data appears when agents are connected and running actions</div></td></tr>';
+  } catch (e) { console.error('fetchBehavioral:', e); }
+}
+
+// --- Governance: Manifests ---
+async function fetchManifests() {
+  try {
+    const resp = await fetch('/admin/v1/manifests');
+    const manifests = await resp.json();
+    const list = Array.isArray(manifests) ? manifests : [];
+    document.getElementById('manifestsCount').textContent = list.length;
+    document.getElementById('manifestsDriftCount').textContent = '-';
+
+    const tbody = document.getElementById('manifestsTable');
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>No active manifests</p></td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(m => {
+      const tools = (m.allowed_tools || []).join(', ') || '-';
+      const toolsShort = tools.length > 30 ? tools.substring(0, 27) + '...' : tools;
+      return `<tr>
+        <td><code>${(m.id || '').substring(0, 12)}...</code></td>
+        <td>${m.task_id || '-'}</td>
+        <td>${m.owner || '-'}</td>
+        <td><span class="badge">${m.risk_tier || 'medium'}</span></td>
+        <td>${toolsShort}</td>
+        <td style="color:${m.active ? 'var(--accent-green)' : 'var(--text-muted)'}">${m.active ? 'Yes' : 'No'}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) { console.error('fetchManifests:', e); }
+}
+
+// --- Governance: Policy Versions ---
+async function fetchPolicyVersions() {
+  try {
+    const resp = await fetch('/admin/v1/policy-versions');
+    const versions = await resp.json();
+    const list = Array.isArray(versions) ? versions : [];
+    document.getElementById('policyVersionCount').textContent = list.length;
+
+    if (list.length > 0) {
+      const current = list[list.length - 1];
+      document.getElementById('policyCurrentVersion').textContent = 'v' + current.version;
+      document.getElementById('policyRuleCount').textContent = current.rule_count || 0;
+    }
+
+    const tbody = document.getElementById('policyVersionsTable');
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>No policy versions</p></td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(v => {
+      const ts = v.timestamp ? new Date(v.timestamp).toLocaleString() : '-';
+      const isCurrent = v.version === list[list.length - 1].version;
+      const sourceColor = v.source === 'rollback' ? 'var(--accent-orange)' : v.source === 'reload' ? 'var(--accent-blue)' : 'var(--text-secondary)';
+      return `<tr>
+        <td><strong>v${v.version}</strong>${isCurrent ? ' <span style="color:var(--accent-green);font-size:11px;">(current)</span>' : ''}</td>
+        <td>${ts}</td>
+        <td>${v.rule_count || 0}</td>
+        <td>${v.default_decision || '-'}</td>
+        <td style="color:${sourceColor}">${v.source || '-'}</td>
+        <td>${!isCurrent ? `<button onclick="rollbackPolicy(${v.version})" style="background:var(--accent-orange);color:#fff;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px;">Rollback</button>` : '<span style="color:var(--text-muted)">-</span>'}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) { console.error('fetchPolicyVersions:', e); }
+}
+
+async function rollbackPolicy(version) {
+  if (!confirm('Rollback to policy version ' + version + '? This will replace the current rules immediately.')) return;
+  try {
+    const resp = await fetch('/admin/v1/policy-versions/' + version + '/rollback', { method: 'POST' });
+    if (resp.ok) {
+      fetchPolicyVersions();
+    } else {
+      alert('Rollback failed: ' + resp.status);
+    }
+  } catch (e) { alert('Rollback failed: ' + e.message); }
+}
+
+async function fetchTraces() {
+  try {
+    const resp = await fetch('/admin/v1/traces');
+    const data = await resp.json();
+    const statsResp = await fetch('/admin/v1/traces/stats');
+    const stats = await statsResp.json();
+
+    document.getElementById('traceTotalCount').textContent = stats.total || 0;
+    document.getElementById('traceErrorRate').textContent = (stats.error_rate_pct || 0).toFixed(1) + '%';
+    document.getElementById('traceAvgDuration').textContent = (stats.avg_duration_ms || 0) + 'ms';
+    document.getElementById('tracesCount').textContent = (data.traces || []).length + ' entries';
+
+    const tbody = document.getElementById('tracesTable');
+    const traces = data.traces || [];
+    if (traces.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>No traces yet</p></td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = traces.map(t => {
+      const time = new Date(t.start_time).toLocaleTimeString();
+      const statusColor = t.status === 'error' ? 'var(--accent-red)' : 'var(--accent-green)';
+      const durationColor = t.duration_ms < 150 ? 'var(--accent-green)' : t.duration_ms < 1000 ? 'var(--accent-orange)' : 'var(--accent-red)';
+      
+      let attrsHTML = '';
+      if (t.attrs) {
+        attrsHTML = Object.entries(t.attrs).map(([k, v]) => {
+          let shortKey = k;
+          if (k.startsWith('aegisflow.')) shortKey = k.replace('aegisflow.', '');
+          return `<span class="badge" style="background:var(--bg-elevated);border:1px solid var(--border);margin-right:4px;font-size:10px;color:var(--text-secondary);"><span style="color:var(--text-muted);">${shortKey}:</span> ${v}</span>`;
+        }).join('');
+      }
+
+      return `<tr>
+        <td style="font-size:12px;color:var(--text-muted);white-space:nowrap;">${time}</td>
+        <td><code style="font-size:11px;color:var(--text-muted);">${t.trace_id}</code></td>
+        <td style="font-weight:600;">${t.operation}</td>
+        <td><span style="color:${durationColor};font-weight:500;">${t.duration_ms}ms</span></td>
+        <td><span style="color:${statusColor};font-weight:600;">${t.status.toUpperCase()}</span></td>
+        <td>${attrsHTML || '-'}</td>
+      </tr>`;
+    }).join('');
+  } catch (err) { console.error('Failed to fetch traces', err); }
+}
+
+async function fetchEdgeMetrics() {
+  try {
+    const resp = await fetch('/admin/v1/edge/metrics');
+    const metrics = await resp.json();
+
+    document.getElementById('edgeActiveConnections').textContent = metrics.active_connections || 0;
+    
+    let loadshedTotal = 0;
+    if (metrics.load_shed) {
+      metrics.load_shed.forEach(ls => loadshedTotal += (ls.count || 0));
+    }
+    document.getElementById('edgeLoadShedCount').textContent = loadshedTotal;
+
+    const totalCircuits = (metrics.circuit_breakers || []).length;
+    const openCircuits = (metrics.circuit_breakers || []).filter(cb => cb.state === 1).length;
+    document.getElementById('edgeBreakerCount').textContent = openCircuits + ' / ' + totalCircuits;
+
+    const reqBody = document.getElementById('edgeRequestsTable');
+    const edgeRequests = metrics.edge_requests || [];
+    if (edgeRequests.length === 0) {
+      reqBody.innerHTML = '<tr><td colspan="3" class="empty-state"><p>No edge traffic recorded</p></td></tr>';
+    } else {
+      reqBody.innerHTML = edgeRequests.map(r => {
+        return `<tr>
+          <td style="font-weight:600;color:var(--accent-blue);">${r.upstream}</td>
+          <td><span class="badge" style="background:var(--bg-elevated);color:var(--text-secondary);">${r.status}</span></td>
+          <td style="font-weight:700;">${r.count.toLocaleString()}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    const cbBody = document.getElementById('edgeBreakersTable');
+    const breakers = metrics.circuit_breakers || [];
+    if (breakers.length === 0) {
+      cbBody.innerHTML = '<tr><td colspan="2" class="empty-state"><p>No circuit breakers loaded</p></td></tr>';
+    } else {
+      const stateLabels = { 0: 'CLOSED (Healthy)', 1: 'OPEN (Tripped)', 2: 'HALF-OPEN (Probing)' };
+      const stateColors = { 0: 'var(--accent-green)', 1: 'var(--accent-red)', 2: 'var(--accent-orange)' };
+      cbBody.innerHTML = breakers.map(b => {
+        return `<tr>
+          <td style="font-weight:600;">${b.upstream}</td>
+          <td style="color:${stateColors[b.state] || 'var(--text-muted)'};font-weight:700;">${stateLabels[b.state] || b.state}</td>
+        </tr>`;
+      }).join('');
+    }
+  } catch (err) { console.error('Failed to fetch edge metrics', err); }
+}
+
+initCharts();
+applyTheme(document.documentElement.getAttribute('data-theme'));
+fetchWhoami();
+fetchUsage();
+fetchOverviewStatus();
+setInterval(fetchUsage, 3000);
+setInterval(fetchOverviewStatus, 3000);
+setInterval(() => {
+  const p = document.getElementById('page-traces');
+  if (p && p.style.display !== 'none') fetchTraces();
+}, 3000);
+setInterval(() => {
+  const p = document.getElementById('page-edge');
+  if (p && p.style.display !== 'none') fetchEdgeMetrics();
+}, 3000);
+</script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package aegisflow.v1;
+
+option go_package = "github.com/saivedant169/AegisFlow/pkg/pb/v1;pbv1";
+
+// AgentOSGateway provides low-latency gRPC endpoints for policy enforcement
+// and credentials management.
+service AgentOSGateway {
+  // CheckAction evaluates an action envelope against the policy engine.
+  rpc CheckAction(CheckActionRequest) returns (CheckActionResponse);
+
+  // IssueCredential checks permissions and issues a temporary credential.
+  rpc IssueCredential(IssueCredentialRequest) returns (IssueCredentialResponse);
+
+  // RecordEvidence submits an audit or execution record to the evidence chain.
+  rpc RecordEvidence(RecordEvidenceRequest) returns (RecordEvidenceResponse);
+}
+
+message CheckActionRequest {
+  string tenant_id = 1;
+  string tool = 2;
+  string target = 3;
+  string capability = 4;
+  string input_text = 5;
+}
+
+message CheckActionResponse {
+  string decision = 1; // "allow" | "review" | "block"
+  string policy_name = 2;
+  string message = 3;
+}
+
+message IssueCredentialRequest {
+  string tenant_id = 1;
+  string provider_name = 2;
+  string capability = 3;
+  string target = 4;
+}
+
+message IssueCredentialResponse {
+  string credential_id = 1;
+  string status = 2;
+  int64 expires_at = 3; // UNIX timestamp
+}
+
+message RecordEvidenceRequest {
+  string session_id = 1;
+  string action = 2;
+  string payload = 3;
+  string hash = 4;
+}
+
+message RecordEvidenceResponse {
+  string record_id = 1;
+  bool verified = 2;
+}

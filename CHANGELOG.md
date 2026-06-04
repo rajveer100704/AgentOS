@@ -1,0 +1,385 @@
+# Changelog
+
+All notable changes to AgentOS will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project loosely follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) while it is pre-1.0.
+
+## [0.8.0] - 2026-06-03
+
+Runtime-governance identity, an Anthropic-native gateway path, and operator DX. This release lets Claude Code and the Anthropic SDK route through AgentOS so their prompts are governed and audited before they reach a provider, surfaces policy decisions in Prometheus, adds a data-explorer policy pack, and sharpens the CLI and docs.
+
+### Added
+
+- **Inbound Anthropic Messages API** (`POST /v1/messages`): route Claude Code (via `ANTHROPIC_BASE_URL`) and the Anthropic SDK through the gateway. Prompts run through the same input/output policy + audit pipeline as the OpenAI path, with streaming re-framed as Anthropic SSE events and tool-use requests rejected loudly rather than silently degraded. (#102)
+- `POST /v1/messages/count_tokens` so Anthropic clients can budget context (estimate).
+- Request transforms and model aliasing now apply on the `/v1/messages` path, matching the OpenAI handler.
+- **Prometheus `AgentOS_policy_decisions_total{decision,protocol}`** counter, incremented in the MCP gateway and exposed on `/metrics`. (#79)
+- **`sql-explorer` policy pack** for BI/data agents: `SELECT` allowed, `INSERT`/`UPDATE` reviewed, `DELETE`/`DROP`/`TRUNCATE`/`GRANT`/`REVOKE` blocked. Includes tuning notes and a contract test. (#87)
+- `agentctl status --json`, `agentctl pending --json`, and `agentctl test-action --dry-run` for automation and safe policy iteration. (#86, #77, #83)
+- `--version` / `-v` flags on the `AgentOS` binary. (#96)
+- Config startup warnings for tool-policy rules referencing an unknown protocol. (#78)
+- nginx + Caddy reverse-proxy guide, a troubleshooting guide, and a CLI automation example. (#84)
+- GitHub Discussions and structured issue forms for community reports.
+
+### Changed
+
+- README repositioned to lead with runtime governance for coding agents; legacy gateway content moved under a supporting section.
+
+### Fixed
+
+- MCP stdio bridge now returns a JSON-RPC error when the gateway is unreachable instead of echoing an empty line that left clients hung on "connecting".
+- Upstream provider errors are redacted to a generic message for clients (detail logged server-side) on the chat, stream, and WebSocket paths. (#103)
+- Streaming policy-scan buffers are bounded to a sliding window so memory and scan cost stay linear on long streams. (#103)
+- `golang.org/x/net` updated to v0.55.0 for GO-2026-5026.
+
+### Security
+
+- Audit-log `detail` is built with `json.Marshal` instead of string concatenation, preventing malformed or forgeable audit JSON when a prompt or policy message contains quotes; prompt truncation is now UTF-8 rune-safe.
+
+## [0.7.0] - 2026-04-22
+
+This release focuses on production readiness: safer deployment defaults, stronger validation, release hygiene, and automated checks that make the runtime easier to operate with confidence.
+
+### Added
+
+- Docker Compose smoke test covering gateway health, admin health, a successful chat completion, and a policy-blocked request.
+- CI smoke job that runs the local production-style Docker Compose check.
+- CI vulnerability scan using `govulncheck`.
+- `make smoke` and `make vuln` targets for local production checks.
+- Production readiness checklist for operators.
+- Support for loading tenant API keys from environment-backed secrets with `key_env`.
+- Helm values and templates for secret-backed tenant API keys.
+- More admin and CLI coverage around invalid JSON, policy rollback, and startup config loading.
+
+### Changed
+
+- Go toolchain requirement updated to 1.26.2.
+- Docker builder image updated to `golang:1.26.2-alpine`.
+- Docker image now starts the built `AgentOS` binary directly.
+- Helm deployment now uses configured service ports and sets `AgentOS_CONFIG`.
+- Release metadata aligned across CLI, dashboard, MCP gateway, OpenAPI, and Helm charts.
+
+### Fixed
+
+- Startup config validation now catches duplicate, empty, and conflicting tenant API key entries.
+- Docker build context now excludes local development and generated files through `.dockerignore`.
+- Go formatting is now enforced in CI.
+
+## [0.6.0] - 2026-04-12
+
+This release wires up previously disconnected subsystems, hardens error handling and test coverage, and adds policy versioning — the ability to track, diff, and rollback policy changes at runtime.
+
+### Added — Runtime integration
+
+- **Approval notifications**: Slack and GitHub notifiers now fire automatically on submit, approve, and deny. Previously the notifier code existed but was never called (`_ = approvalNotifiers`).
+- **Behavioral kill switch**: The session anomaly detection engine (6 rules: exfiltration, privilege escalation, credential abuse, destructive sequences, fan-out, repeated escalation) is now wired into the gateway. Sessions that exceed the configurable risk threshold are auto-blocked with HTTP 403.
+- **Manifest drift enforcement**: Drift detection now supports a configurable `enforcement_mode` (`warn` or `enforce`). In enforce mode, drift violations block actions. Default is `warn` for backward compatibility.
+- **Evidence reports**: New `RenderMarkdownReport()` and `RenderHTMLReport()` produce human-readable session reports for auditors. Available via admin API (`/admin/v1/evidence/sessions/{id}/report` and `/report.html`) and CLI (`agentctl evidence report`).
+- **Policy versioning**: In-memory version history (last 20 snapshots) with automatic snapshots on config reload. New admin API endpoints (`/admin/v1/policy-versions`, `/current`, `/{version}`, `/{version}/rollback`). New CLI commands (`agentctl policy history`, `policy current`, `policy rollback <version>`). Rollback atomically replaces engine rules.
+- **Enhanced `agentctl status`**: Now shows providers, pending approvals, evidence sessions, budgets, and recent violations — not just UP/DOWN.
+- **Evidence admin adapter**: SessionChain now exposed to admin API with export, verify, and report endpoints.
+
+### Fixed — Error handling and consistency
+
+- **agentctl JSON decode errors**: 18 call sites across 7 files silently ignored malformed JSON responses. All now properly report errors via `decodeJSON` helper.
+- **Unified error response format**: Admin API (48 sites), identity admin, and httpgate all migrated from `{"error":"msg"}` to structured `{"error":{"code":N,"type":"...","message":"..."}}` matching the gateway format.
+- **MCP gateway upstream errors**: Error messages now include tool name, upstream name, and remediation hint instead of raw `connection refused` (#82).
+- **Config startup validation**: 11 new rules catch empty provider names/types, duplicate providers, routes referencing unknown providers, tenants with no API keys, duplicate tenant IDs, negative rate limits, and negative max body size at startup instead of runtime.
+
+### Improved — Test coverage
+
+- Overall project coverage: 56% to 63%+
+- `internal/identity`: 48% to 92% (29 admin handler tests + ConnectorAdmin SoD rule)
+- `internal/approval`: 54% to 80% (IsApprovedForTool, CleanupExpired, notifier tests)
+- `internal/admin`: 23% to 65% (77 tests covering all endpoint categories)
+- `internal/capability`: 74% to 92% (admin adapter tests)
+- `internal/usage`: 64% to 100% (tracker + cost estimation tests)
+- `internal/evidence`: 60% to 68% (export + report tests)
+- `internal/config`: 12 new validation tests
+
+### Changed
+
+- `internal/toolpolicy/Engine` is now thread-safe with `sync.RWMutex` and supports `ReplaceRules()` for live policy updates
+- README updated with 37 admin API endpoints (was 17), 37 internal packages (was 23), and documentation for all new features
+
+### Contributors
+
+- API key rotation support (rk-python5, PR #75)
+- CI badge fix (tanmaykadam1533, PR #88)
+
+## [0.5.0] - 2026-04-07
+
+This release is the pivot. AgentOS used to describe itself as an AI gateway. Now it is an open-source runtime governance layer for tool-using agents. The gateway features are still here, but they sit behind the governance plane as supporting infrastructure.
+
+### Added — Agent execution governance (Phase 6)
+
+- ActionEnvelope core type: every agent action gets normalised into one policy-evaluable object with actor, protocol, tool, target, parameters, requested capability, decision, and an evidence hash
+- MCP remote gateway (JSON-RPC 2.0 and SSE transport) on port 8082 so Claude Code, Cursor, and other MCP clients can connect directly
+- Tool policy engine with glob matching and three first-class decisions: allow, review, block
+- Approval queue for human-in-the-loop review, with submit, approve, deny, and history
+- Session evidence chain with SHA-256 hash linking and tamper detection
+- Fail-closed governance mode (with a break-glass override for dev/debug)
+- agentctl commands: `test-action`, `pending`, `approve`, `deny`, `verify`, `evidence`, `simulate`, `why`, `diff-policy`, `manifest`, `supply-chain`
+- Protocol connectors: shell (with dangerous command detection), SQL (with operation classification), GitHub (with risk tiers), HTTP (reverse proxy with host allowlists)
+- 10 end-to-end Phase 6 integration tests
+
+### Added — Task-scoped credentials (Phase 7)
+
+- GitHub App credential broker with real RS256 JWT signing (pure stdlib, no external JWT library)
+- AWS STS credential broker with SigV4 signing inlined (no AWS SDK dependency)
+- HashiCorp Vault broker for database secrets with lease management
+- Static credential broker as a clearly-labelled degraded fallback
+- Credential registry with periodic cleanup of expired tokens
+- Credential provenance recorded in the evidence chain, so every action is linked to the exact short-lived credential used
+- Admin API endpoints for listing active credentials and revoking them
+
+### Added — Evidence, policy packs, benchmarks, and demo (Phase 8)
+
+- Evidence export and session manifests with human-readable reports
+- `agentctl verify` for audit chain and session verification
+- `agentctl evidence` for export and session listing
+- Three blessed policy packs: `readonly`, `pr-writer`, `infra-review`
+- Governance overhead benchmarks: policy evaluate (~1.2 µs), full allow pipeline (~5.2 µs), review path (~1.3 µs)
+- Attack demo pack with 20 scenarios across shell, SQL, GitHub, HTTP, and credential theft
+- One-click Docker Compose demo and interactive demo script (9 steps)
+
+### Added — Governed Coding Agent Starter Kit (Phase 9)
+
+- Complete `starter-kit/` directory with everything a team needs to adopt AgentOS in 15 minutes
+- PR-writer focused installer (`install-pr-writer.sh`) with prerequisite checks, sanity tests, and a verified install-to-running time under 10 seconds on a dev machine
+- Claude Code and Cursor setup guides with copy-paste configs
+- Production deployment templates: Docker Compose, Helm chart, Terraform for AWS ECS Fargate
+- Efficacy test pack: 20 attack scenarios plus 2 legitimate operations, pass/fail report output
+- Sample evidence bundle and human-readable session report
+
+### Added — Adoption sprint (Phase 10, in progress)
+
+- `docs/PR_WRITER.md` proof page: one concrete scenario walkthrough with real output, real hashes, and real decisions
+- Tuned `pr-writer` policy pack: `git status`, `git log`, `git diff`, `pytest`, `go test`, and other everyday commands now pass without interruption; dangerous operations still hard-blocked
+
+### Added — Enterprise grade (all 12 uplift items)
+
+Tier 1 (must-build):
+- Typed resource model with hierarchical policy matching and environment awareness
+- TaskManifest with intent-to-execution drift detection
+- Capability tickets: HMAC-signed one-purpose execution tokens with nonce replay protection
+- Policy simulation and explainability (`agentctl simulate`, `why`, `diff-policy`)
+- Safe execution sandboxes for shell, SQL, HTTP, and Git with architectural safety constraints
+
+Tier 2 (hardening):
+- Behavioral session policy engine with sequence-based threat detection (exfiltration, privilege escalation, destructive sequences, fan-out, credential abuse)
+- Approval integrations: GitHub PR comments and Slack webhooks, with approval timeout auto-deny
+- Enterprise identity model: org → team → project → environment hierarchy with separation-of-duties rules
+- Signed policy and connector supply chain with trust tiers and strict-mode verification
+
+Tier 3 (operational maturity):
+- Resilience: component health monitoring, safe degradation modes, retention policies, backup/restore, circuit breakers
+- Threat model (10 threat categories), OWASP Agentic Top 10 control mapping, deployment guide, security questionnaire, saved-incident narratives
+
+### Added — Gateway layer (Phase 5)
+
+- Semantic caching via embedding similarity with a configurable cosine threshold
+- Cost optimisation engine that suggests cheaper model alternatives based on real usage
+- Request/response transformation: PII stripping from responses, per-tenant system prompt injection, model aliasing
+- Load shedding with three priority tiers
+- WebSocket endpoint at `/v1/ws` for persistent connections
+- GraphQL admin API with 13 queries and 5 mutations alongside the existing REST API
+- WASM plugin SDK with tutorial and two example plugins
+- 16 new integration tests
+
+### Changed
+
+- README rewritten to lead with the PR-writer workflow and governance positioning, not the gateway one
+- Default policy engine mode is now fail-closed (break-glass mode exists for explicit opt-in)
+- Gateway features are now described as supporting infrastructure behind the governance plane, not the main story
+- Architecture diagram redrawn to show agent → AgentOS (policy, credentials, evidence) → tools
+- Roadmap section reorganised to show Phase 6–10 agent governance work alongside the completed Phase 1–5 gateway work
+
+### Fixed
+
+- MCP gateway now checks approval history before blocking, so an approved action can be retried successfully on the second attempt
+- Approval queue is correctly wired into the MCP gateway (was previously passing nil)
+- `agentctl approve` now passes the API key on authenticated endpoints
+- Audit endpoint in the demo script now uses the admin API key
+- Demo API key role bumped from operator to admin for audit verification access
+- MCP gateway upstream URL switched from Docker hostname to `localhost:3000` for local dev
+- `tool_policies` rules in the realworld config now use `protocol: "mcp"` instead of `"git"` to match actual MCP transport
+- Merge conflict resolution for semantic caching and governance branches
+
+### Security
+
+- Fail-closed is the default behaviour for the policy engine
+- Capability tickets prevent replay through nonce and HMAC signing
+- Evidence chain integrity is provable via `agentctl verify`
+- Credential provenance means every action is attributable to a specific short-lived credential
+- Supply chain signing covers policy packs and connectors (not just WASM plugins)
+- Shell sandbox redacts environment variables matching credential patterns
+
+## [0.4.0] - 2026-03-30
+
+### Added — Phase 4: Advanced Governance & Marketplace
+
+#### Enterprise RBAC (4A)
+- Three roles per API key: admin, operator, viewer with hierarchy enforcement
+- Custom YAML unmarshalling for backward compatibility (plain strings default to operator)
+- SoftAuth middleware for admin server (doesn't reject missing keys)
+- /admin/v1/whoami endpoint returns current role and tenant
+- RBAC middleware with per-route groups (viewer/operator/admin)
+- admin_auth.go removed — RBAC replaces it entirely
+
+#### Audit Logging (4B)
+- Append-only PostgreSQL table with SHA-256 hash chain
+- Buffered channel writer for serialized hash computation
+- In-memory store fallback when PostgreSQL is disabled
+- /admin/v1/audit endpoint for querying with filters (operator role required)
+- /admin/v1/audit/verify endpoint for integrity verification (admin role required)
+- Audit Log dashboard page with verify button
+
+#### AI Evaluation Hooks (4C)
+- Built-in quality scorer: empty response (0), truncated (-30), too short (-20), latency degradation (-10)
+- Webhook evaluator with configurable sampling rate and content truncation
+- QualityScore field added to analytics DataPoint
+- Wired into gateway handler after every response
+
+#### Plugin Marketplace (4D)
+- agentctl plugin subcommand: search, info, install, list, remove
+- JSON registry format hosted on GitHub
+- SHA-256 verification on download
+- Separate plugins.yaml (never touches main config)
+- HTTPS-only download enforcement
+
+#### Multi-Cluster Federation (4E)
+- Control plane serves stripped config (API keys removed) to data planes
+- Data planes poll config and push metrics/status on configurable interval
+- Bearer token authentication between planes
+- Federation dashboard page showing data plane health
+- Graceful degradation when control plane is down
+
+### Security
+- Timing-safe federation token comparison (subtle.ConstantTimeCompare)
+- Body size limit on federation status endpoint (1MB)
+- Audit endpoint moved from viewer to operator RBAC group (prevents prompt leakage)
+- Unicode-safe content truncation in eval webhook
+- HTTPS-only enforcement for plugin downloads
+- Plugin download size limit (50MB)
+
+## [0.3.0] - 2026-03-27
+
+### Added — Phase 3: Enterprise Capabilities
+
+#### Canary Rollouts (3A)
+- Gradual traffic shifting between providers with configurable stages (e.g., 5% → 25% → 50% → 100%)
+- Automatic promotion on healthy metrics, auto-rollback on error rate or latency spikes
+- Rollout state machine: pending → running → completed/rolled_back, with pause/resume
+- PostgreSQL persistence for rollout state (in-memory fallback without DB)
+- Admin API: 6 endpoints for rollout lifecycle management (create, list, get, pause, resume, rollback)
+- Rollouts dashboard page with live progress, baseline vs canary metrics, action buttons
+
+#### Analytics & Anomaly Detection (3B)
+- In-memory time-series collector with 1-minute granularity buckets, 48h rolling window
+- Per-dimension tracking (tenant, model, provider, global) with p50/p95/p99 latency
+- Static threshold anomaly detection (error rate, latency, request rate, cost)
+- Statistical baseline detection (24h moving average + standard deviation)
+- Alert manager with auto-resolve after 5 consecutive normal evaluations
+- PostgreSQL store for metric aggregates and alert history
+- Analytics dashboard page with real-time charts
+- Alerts dashboard page with severity badges and acknowledge action
+
+#### Cost Forecasting & Budget Alerts (3C)
+- Budget limits at global, per-tenant, and per-model levels
+- Three-tier enforcement: alert at 80%, warning header at 90%, block at 100%
+- Budget check middleware in request path with per-model enforcement in handler
+- Linear cost projection forecasting end-of-period spend
+- Budgets dashboard page with spend bars and forecast indicators
+
+#### Multi-Region Routing (3D)
+- Region-grouped providers with per-region routing strategy
+- Cross-region fallback when all providers in a region are circuit-broken
+- Region support in both standard and streaming request paths
+- Region field on provider API and live feed dashboard
+- Backward compatible — routes without regions work unchanged
+
+#### Kubernetes Operator (3E)
+- 5 CRD types: AgentOSGateway, AgentOSProvider, AgentOSRoute, AgentOSTenant, AgentOSPolicy
+- CRD YAML manifests with printer columns for kubectl
+- Operator reconciler: CRDs → AgentOS.yaml ConfigMap
+- DeepCopy methods, scheme registration, controller watches
+- Status reporting from gateway admin API back to CRD objects
+- Operator binary with controller-runtime, RBAC, Deployment manifest, Dockerfile
+- Helm chart integration with operator.enabled flag
+
+#### Dashboard
+- Gateway Overview now shows Phase 3 operational status (alerts, rollouts, budgets, regions)
+- 11 total dashboard pages
+- Policy rules display with collapsible "+N more" toggle
+
+### Fixed
+- Analytics collector race condition (unlock/relock inside loop)
+- Per-model budget enforcement (middleware was passing "*" instead of actual model)
+- Streaming requests now use canary rollout and multi-region routing
+- Analytics now records all response types (403, 502, 429) not just 200
+- Handler dbQueue properly closed on shutdown (goroutine leak fix)
+- Nil guard on rollout ActiveRollout lookup
+
+## [0.2.1] - 2026-03-27
+
+### Added
+- Cache stats dashboard page with hit/miss counters, hit rate, eviction tracking, and live chart
+- Policy violations dashboard page with violation history, per-policy and per-tenant breakdowns
+- Cache stats API endpoint (`/admin/v1/cache`)
+- Policy violations API endpoint (`/admin/v1/violations`)
+
+### Fixed
+- Token rate limiter now reads actual request body size instead of trusting Content-Length header
+- Token rate limiter fails closed on error (was failing open)
+- Replaced unbounded goroutine DB writes with buffered channel worker (prevents memory leak)
+
+### Changed
+- Redis and PostgreSQL ports are now internal-only in Docker Compose (no longer exposed to host)
+- Added health check for AgentOS service in Docker Compose
+- Added RealIP trusted proxy documentation in gateway setup
+
+## [0.2.0] - 2026-03-26
+
+### Added
+- WASM policy plugin support via wazero runtime
+- Custom policy filters in any WASM-compatible language (Go, Rust, TinyGo, AssemblyScript)
+- Configurable per-plugin timeout and error handling (on_error: block/allow)
+- Example WASM plugin with ABI documentation
+- Live request feed dashboard page
+
+### Security
+- Timing-safe tenant API key comparison (SHA-256 + subtle.ConstantTimeCompare)
+- Admin endpoints blocked by default when token is unconfigured
+- Removed admin token from URL query params (header-only auth)
+- 10MB request body size limit
+- Cache keys scoped by tenant ID (cross-tenant data leak fix)
+- SSE injection fix via json.Marshal
+- Rate limiter fails closed (503) instead of open
+- NFKC Unicode normalization for keyword policy filter
+- Expanded jailbreak keyword list (3 to 25 patterns)
+
+## [0.1.0] - 2024-03-24
+
+### Added
+- Unified AI gateway with OpenAI-compatible API
+- Provider adapters: Mock, OpenAI, Anthropic, Ollama
+- Intelligent routing with glob-based model matching
+- Priority and round-robin routing strategies
+- Automatic fallback with circuit breaker
+- In-memory rate limiting (sliding window)
+- Redis-backed rate limiting (optional)
+- Tenant authentication via API keys
+- Policy engine with input and output checks
+- Keyword blocklist filter
+- Regex pattern filter
+- PII detection (email, SSN, credit card)
+- Usage tracking with per-tenant, per-model aggregation
+- Cost estimation per request
+- OpenTelemetry tracing (stdout and OTLP exporters)
+- Prometheus metrics endpoint
+- Structured JSON logging
+- Admin API with health, metrics, and usage endpoints
+- Docker and Docker Compose support
+- GitHub Actions CI/CD
+- Comprehensive test suite

@@ -1,0 +1,51 @@
+server:
+  port: 8080
+  admin_port: 8081
+
+providers:
+  - name: "mock"
+    type: "mock"
+    enabled: true
+    default: true
+
+tenants:
+  - id: "student"
+    name: "Student"
+    api_keys:
+      - key: "student-local-key"
+        role: "viewer"
+    rate_limit:
+      requests_per_minute: 30
+      tokens_per_minute: 50000
+
+  - id: "team"
+    name: "Small Team"
+    api_keys:
+      - key: "team-local-key"
+        role: "operator"
+    rate_limit:
+      requests_per_minute: 120
+      tokens_per_minute: 200000
+
+routes:
+  - match:
+      model: "*"
+    providers: ["mock"]
+    strategy: "priority"
+
+policies:
+  governance_mode: "governance"
+  input:
+    - name: "block-secret-request"
+      type: "keyword"
+      action: "block"
+      keywords:
+        - "show me the api key"
+        - "print the secret"
+
+telemetry:
+  enabled: true
+  exporter: "stdout"
+  metrics:
+    enabled: true
+    path: "/metrics"

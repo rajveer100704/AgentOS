@@ -1,0 +1,1131 @@
+package config
+
+import (
+	"crypto/sha256"
+	"crypto/subtle"
+	"fmt"
+	"os"
+	"strings"
+	"time"
+
+	"gopkg.in/yaml.v3"
+)
+
+type Config struct {
+	Server               ServerConfig              `yaml:"server"`
+	Providers            []ProviderConfig          `yaml:"providers"`
+	Routes               []RouteConfig             `yaml:"routes"`
+	Tenants              []TenantConfig            `yaml:"tenants"`
+	RateLimit            RateLimitConfig           `yaml:"rate_limit"`
+	Policies             PoliciesConfig            `yaml:"policies"`
+	Telemetry            TelemetryConfig           `yaml:"telemetry"`
+	Logging              LoggingConfig             `yaml:"logging"`
+	Cache                CacheConfig               `yaml:"cache"`
+	Webhook              WebhookConfig             `yaml:"webhook"`
+	Database             DatabaseConfig            `yaml:"database"`
+	Admin                AdminConfig               `yaml:"admin"`
+	Aliases              AliasConfig               `yaml:"aliases"`
+	Transform            TransformConfig           `yaml:"transform"`
+	Analytics            AnalyticsConfig           `yaml:"analytics"`
+	Budgets              BudgetsConfig             `yaml:"budgets"`
+	CostOpt              CostOptConfig             `yaml:"cost_optimization"`
+	Eval                 EvalConfig                `yaml:"eval"`
+	Federation           FederationConfig          `yaml:"federation"`
+	LoadShed             LoadShedConfig            `yaml:"load_shed"`
+	WebSocket            WebSocketConfig           `yaml:"websocket"`
+	ToolPolicies         ToolPolicyConfig          `yaml:"tool_policies"`
+	MCPGateway           MCPGatewayConfig          `yaml:"mcp_gateway"`
+	Credentials          CredentialConfig          `yaml:"credentials"`
+	ShellGate            ShellGateConfig           `yaml:"shell_gate"`
+	SQLGate              SQLGateConfig             `yaml:"sql_gate"`
+	GitHubGate           GitHubGateConfig          `yaml:"github_gate"`
+	HTTPGate             HTTPGateConfig            `yaml:"http_gate"`
+	Sandbox              SandboxConfig             `yaml:"sandbox"`
+	Capability           CapabilityConfig          `yaml:"capability"`
+	ResourcePolicies     ResourcePolicyConfig      `yaml:"resource_policies"`
+	Manifests            ManifestConfig            `yaml:"manifests"`
+	ApprovalIntegrations ApprovalIntegrationConfig `yaml:"approval_integrations"`
+	Identity             IdentityConfig            `yaml:"identity"`
+	Behavioral           BehavioralConfig          `yaml:"behavioral"`
+	SupplyChain          SupplyChainConfig         `yaml:"supply_chain"`
+	Resilience           ResilienceConfig          `yaml:"resilience"`
+
+	// EdgeProxy configures the AgentOS Edge reverse proxy layer.
+	// When enabled, it runs on :8443 (TLS) and :8444 (H2C) and forwards
+	// traffic to the gateway, MCP gateway, and admin server.
+	EdgeProxy EdgeProxyConfig `yaml:"edge_proxy"`
+}
+
+// EdgeProxyConfig is the YAML representation of edgeproxy.Config.
+// It is kept here (separate from internal/edgeproxy) to avoid an import
+// cycle — main.go imports both config and edgeproxy.
+type EdgeProxyConfig struct {
+	Enabled         bool                 `yaml:"enabled"`
+	ListenAddr      string               `yaml:"listen_addr"`
+	H2CAddr         string               `yaml:"h2c_addr"`
+	HTTP3Enabled    bool                 `yaml:"http3_enabled"`
+	HTTP3Addr       string               `yaml:"http3_addr"`
+	TLSCertFile     string               `yaml:"tls_cert_file"`
+	TLSKeyFile      string               `yaml:"tls_key_file"`
+	MaxIdleConns    int                  `yaml:"max_idle_conns"`
+	IdleConnTimeout time.Duration        `yaml:"idle_conn_timeout"`
+	DialTimeout     time.Duration        `yaml:"dial_timeout"`
+	TraceStoreSize  int                  `yaml:"trace_store_size"`
+	Upstreams       []EdgeUpstreamConfig `yaml:"upstreams"`
+	LoadShed        EdgeLoadShedConfig   `yaml:"load_shed"`
+}
+
+// EdgeUpstreamConfig defines one path-prefix → upstream mapping.
+type EdgeUpstreamConfig struct {
+	Name         string        `yaml:"name"`
+	Prefix       string        `yaml:"prefix"`
+	Target       string        `yaml:"target"`
+	StripPrefix  bool          `yaml:"strip_prefix"`
+	Timeout      time.Duration `yaml:"timeout"`
+	CBThreshold  int           `yaml:"circuit_breaker_threshold"`
+	CBResetAfter time.Duration `yaml:"circuit_breaker_reset_after"`
+}
+
+// EdgeLoadShedConfig configures adaptive load shedding at the edge.
+type EdgeLoadShedConfig struct {
+	Enabled         bool    `yaml:"enabled"`
+	CPUThresholdPct float64 `yaml:"cpu_threshold_pct"`
+	MaxQueueDepth   int     `yaml:"max_queue_depth"`
+	PriorityHeader  string  `yaml:"priority_header"`
+}
+
+// SupplyChainConfig controls signed extension verification.
+type SupplyChainConfig struct {
+	Enabled    bool   `yaml:"enabled"`
+	StrictMode bool   `yaml:"strict_mode"` // reject unsigned in strict
+	SigningKey string `yaml:"signing_key"` // hex-encoded HMAC key
+}
+
+// ResilienceConfig controls enterprise resilience features: health monitoring,
+// degradation modes, retention, backup, and circuit breakers.
+type ResilienceConfig struct {
+	Enabled        bool                 `yaml:"enabled"`
+	HealthInterval time.Duration        `yaml:"health_interval"`
+	Retention      RetentionPolicyCfg   `yaml:"retention"`
+	BackupDir      string               `yaml:"backup_dir"`
+	CircuitBreaker CircuitBreakerConfig `yaml:"circuit_breaker"`
+}
+
+// RetentionPolicyCfg mirrors resilience.RetentionPolicy for YAML loading.
+type RetentionPolicyCfg struct {
+	AuditLogDays        int  `yaml:"audit_log_days"`
+	EvidenceDays        int  `yaml:"evidence_days"`
+	ApprovalHistoryDays int  `yaml:"approval_history_days"`
+	CompressAfterDays   int  `yaml:"compress_after_days"`
+	AutoCleanup         bool `yaml:"auto_cleanup"`
+}
+
+// CircuitBreakerConfig holds defaults for all circuit breakers.
+type CircuitBreakerConfig struct {
+	Threshold  int           `yaml:"threshold"`
+	ResetAfter time.Duration `yaml:"reset_after"`
+}
+
+// BehavioralConfig configures the session-level behavioral policy engine.
+type BehavioralConfig struct {
+	Enabled         bool `yaml:"enabled"`
+	KillSwitchScore int  `yaml:"kill_switch_score"` // auto-block session above this score
+	WindowMinutes   int  `yaml:"window_minutes"`    // analysis window
+}
+
+// ApprovalIntegrationConfig configures external approval notification channels.
+type ApprovalIntegrationConfig struct {
+	Timeout time.Duration        `yaml:"timeout"` // auto-deny after this duration
+	GitHub  GitHubApprovalConfig `yaml:"github"`
+	Slack   SlackApprovalConfig  `yaml:"slack"`
+}
+
+// GitHubApprovalConfig enables posting approval requests as PR comments.
+type GitHubApprovalConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	Token   string `yaml:"token"`
+	Repo    string `yaml:"repo"` // owner/repo for PR comments
+}
+
+// SlackApprovalConfig enables posting approval requests via Slack webhooks.
+type SlackApprovalConfig struct {
+	Enabled    bool   `yaml:"enabled"`
+	WebhookURL string `yaml:"webhook_url"`
+}
+
+// IdentityConfig configures the enterprise identity hierarchy.
+type IdentityConfig struct {
+	Enabled       bool        `yaml:"enabled"`
+	Organizations []OrgConfig `yaml:"organizations"`
+}
+
+// OrgConfig is the YAML representation of an organization.
+type OrgConfig struct {
+	ID    string       `yaml:"id"`
+	Name  string       `yaml:"name"`
+	Teams []TeamConfig `yaml:"teams"`
+}
+
+// TeamConfig is the YAML representation of a team within an organization.
+type TeamConfig struct {
+	ID       string          `yaml:"id"`
+	Name     string          `yaml:"name"`
+	Projects []ProjectConfig `yaml:"projects"`
+}
+
+// ProjectConfig is the YAML representation of a project within a team.
+type ProjectConfig struct {
+	ID           string              `yaml:"id"`
+	Name         string              `yaml:"name"`
+	Environments []EnvironmentConfig `yaml:"environments"`
+}
+
+// EnvironmentConfig is the YAML representation of an environment within a project.
+type EnvironmentConfig struct {
+	ID       string `yaml:"id"`
+	Name     string `yaml:"name"`
+	RiskTier string `yaml:"risk_tier"`
+}
+
+type ManifestConfig struct {
+	Enabled           bool   `yaml:"enabled"`
+	DefaultExpiration string `yaml:"default_expiration"` // e.g., "1h", "24h"
+	DefaultRiskTier   string `yaml:"default_risk_tier"`  // low, medium, high
+	EnforcementMode   string `yaml:"enforcement_mode"`   // "warn" (default) or "enforce"
+}
+
+type CapabilityConfig struct {
+	Enabled    bool          `yaml:"enabled"`
+	SigningKey string        `yaml:"signing_key"` // hex-encoded HMAC key
+	DefaultTTL time.Duration `yaml:"default_ttl"`
+}
+
+type ResourcePolicyConfig struct {
+	Enabled         bool                 `yaml:"enabled"`
+	DefaultDecision string               `yaml:"default_decision"` // "allow", "review", "block"
+	Rules           []ResourcePolicyRule `yaml:"rules"`
+}
+
+type ResourcePolicyRule struct {
+	ResourceType string `yaml:"resource_type"` // "repo", "table", "endpoint", "*"
+	Provider     string `yaml:"provider"`      // "github", "postgres", "aws", "*"
+	Environment  string `yaml:"environment"`   // "prod", "staging", "dev", "*"
+	PathPattern  string `yaml:"path_pattern"`  // glob pattern on joined path
+	Sensitivity  string `yaml:"sensitivity"`   // threshold: "public", "internal", "confidential", "secret"
+	Verb         string `yaml:"verb"`          // "read", "create", "update", "delete", "*"
+	Decision     string `yaml:"decision"`      // "allow", "review", "block"
+	Priority     int    `yaml:"priority"`      // lower = higher priority
+}
+
+type HTTPGateConfig struct {
+	Enabled  bool                `yaml:"enabled"`
+	Port     int                 `yaml:"port"`
+	Services []HTTPServiceConfig `yaml:"services"`
+}
+
+type HTTPServiceConfig struct {
+	Name        string `yaml:"name"`
+	UpstreamURL string `yaml:"upstream_url"`
+	PathPrefix  string `yaml:"path_prefix"`
+}
+
+type LoadShedConfig struct {
+	Enabled       bool          `yaml:"enabled"`
+	MaxConcurrent int64         `yaml:"max_concurrent"`
+	QueueSize     int           `yaml:"queue_size"`
+	QueueTimeout  time.Duration `yaml:"queue_timeout"`
+}
+
+type WebSocketConfig struct {
+	Enabled      bool          `yaml:"enabled"`
+	PingInterval time.Duration `yaml:"ping_interval"`
+}
+
+type ToolPolicyConfig struct {
+	Enabled         bool             `yaml:"enabled"`
+	DefaultDecision string           `yaml:"default_decision"` // "allow", "review", "block"
+	Rules           []ToolPolicyRule `yaml:"rules"`
+}
+
+type ToolPolicyRule struct {
+	Protocol   string `yaml:"protocol"`
+	Tool       string `yaml:"tool"`
+	Target     string `yaml:"target"`
+	Capability string `yaml:"capability"`
+	Decision   string `yaml:"decision"`
+}
+
+type CredentialConfig struct {
+	Enabled   bool                    `yaml:"enabled"`
+	Providers []CredentialProviderCfg `yaml:"providers"`
+}
+
+type CredentialProviderCfg struct {
+	Name            string        `yaml:"name"`
+	Type            string        `yaml:"type"`  // "static", "github_app", "vault", "aws_sts"
+	Token           string        `yaml:"token"` // for static
+	GitHubAppID     int64         `yaml:"github_app_id"`
+	GitHubKeyPath   string        `yaml:"github_key_path"`
+	GitHubInstallID int64         `yaml:"github_install_id"`
+	VaultAddr       string        `yaml:"vault_addr"`
+	VaultToken      string        `yaml:"vault_token"`
+	VaultSecretPath string        `yaml:"vault_secret_path"`
+	AWSRoleARN      string        `yaml:"aws_role_arn"`
+	AWSRegion       string        `yaml:"aws_region"`
+	AWSExternalID   string        `yaml:"aws_external_id"`
+	DefaultTTL      time.Duration `yaml:"default_ttl"`
+}
+
+type ShellGateConfig struct {
+	Enabled         bool   `yaml:"enabled"`
+	BlockDangerous  bool   `yaml:"block_dangerous"`  // auto-block known dangerous commands
+	DefaultDecision string `yaml:"default_decision"` // for commands not matching any rule
+}
+
+type SQLGateConfig struct {
+	Enabled         bool   `yaml:"enabled"`
+	BlockDangerous  bool   `yaml:"block_dangerous"` // auto-block DROP, TRUNCATE, WHERE-less DELETE/UPDATE
+	DefaultDecision string `yaml:"default_decision"`
+}
+
+// SandboxConfig holds architectural safety constraints for all protocol gates.
+type SandboxConfig struct {
+	Shell ShellSandboxConfig `yaml:"shell"`
+	SQL   SQLSandboxConfig   `yaml:"sql"`
+	HTTP  HTTPSandboxConfig  `yaml:"http"`
+	Git   GitSandboxConfig   `yaml:"git"`
+}
+
+type ShellSandboxConfig struct {
+	AllowedBinaries []string            `yaml:"allowed_binaries"`
+	BlockedBinaries []string            `yaml:"blocked_binaries"`
+	AllowedPaths    []string            `yaml:"allowed_paths"`
+	BlockedPaths    []string            `yaml:"blocked_paths"`
+	NetworkPolicy   NetworkPolicyConfig `yaml:"network_policy"`
+	MaxDuration     string              `yaml:"max_duration"`
+	MaxOutputBytes  int64               `yaml:"max_output_bytes"`
+	EnvRedactions   []string            `yaml:"env_redactions"`
+}
+
+type NetworkPolicyConfig struct {
+	AllowEgress  bool     `yaml:"allow_egress"`
+	AllowedHosts []string `yaml:"allowed_hosts"`
+	BlockedHosts []string `yaml:"blocked_hosts"`
+	BlockedPorts []int    `yaml:"blocked_ports"`
+}
+
+type SQLSandboxConfig struct {
+	ReadOnly       bool     `yaml:"read_only"`
+	AllowedSchemas []string `yaml:"allowed_schemas"`
+	BlockedTables  []string `yaml:"blocked_tables"`
+	MaxRowsReturn  int      `yaml:"max_rows_return"`
+	BlockDDL       bool     `yaml:"block_ddl"`
+	BlockGrant     bool     `yaml:"block_grant"`
+	RequireWhere   bool     `yaml:"require_where"`
+}
+
+type HTTPSandboxConfig struct {
+	AllowedHosts    []string `yaml:"allowed_hosts"`
+	BlockedHosts    []string `yaml:"blocked_hosts"`
+	AllowedMethods  []string `yaml:"allowed_methods"`
+	MaxPayloadBytes int64    `yaml:"max_payload_bytes"`
+	BlockedPaths    []string `yaml:"blocked_paths"`
+	RequireHTTPS    bool     `yaml:"require_https"`
+}
+
+type GitSandboxConfig struct {
+	AllowedRepos      []string `yaml:"allowed_repos"`
+	AllowedBranches   []string `yaml:"allowed_branches"`
+	ProtectedPaths    []string `yaml:"protected_paths"`
+	BlockForcePush    bool     `yaml:"block_force_push"`
+	BlockMainMerge    bool     `yaml:"block_main_merge"`
+	BlockWorkflowEdit bool     `yaml:"block_workflow_edit"`
+}
+
+type GitHubGateConfig struct {
+	Enabled         bool   `yaml:"enabled"`
+	DefaultDecision string `yaml:"default_decision"` // "allow", "review", "block"
+}
+type MCPGatewayConfig struct {
+	Enabled   bool                `yaml:"enabled"`
+	Port      int                 `yaml:"port"`
+	Upstreams []MCPUpstreamConfig `yaml:"upstreams"`
+}
+
+type MCPUpstreamConfig struct {
+	Name  string   `yaml:"name"`
+	URL   string   `yaml:"url"`
+	Tools []string `yaml:"tools"`
+}
+
+type FederationConfig struct {
+	Enabled      bool              `yaml:"enabled"`
+	Mode         string            `yaml:"mode"` // "control-plane" or "data-plane"
+	DataPlanes   []DataPlaneConfig `yaml:"data_planes"`
+	ControlPlane ControlPlaneRef   `yaml:"control_plane"`
+}
+
+type DataPlaneConfig struct {
+	Name  string `yaml:"name"`
+	URL   string `yaml:"url"`
+	Token string `yaml:"token"`
+}
+
+type ControlPlaneRef struct {
+	Name         string        `yaml:"name"`
+	URL          string        `yaml:"url"`
+	Token        string        `yaml:"token"`
+	SyncInterval time.Duration `yaml:"sync_interval"`
+}
+
+type EvalConfig struct {
+	Enabled bool              `yaml:"enabled"`
+	Builtin BuiltinEvalConfig `yaml:"builtin"`
+	Webhook WebhookEvalConfig `yaml:"webhook"`
+}
+
+type BuiltinEvalConfig struct {
+	Enabled           bool    `yaml:"enabled"`
+	MinResponseTokens int     `yaml:"min_response_tokens"`
+	LatencyMultiplier float64 `yaml:"latency_multiplier"`
+}
+
+type WebhookEvalConfig struct {
+	URL             string        `yaml:"url"`
+	SampleRate      float64       `yaml:"sample_rate"`
+	Timeout         time.Duration `yaml:"timeout"`
+	SendFullContent bool          `yaml:"send_full_content"`
+}
+
+type CacheConfig struct {
+	Enabled  bool                `yaml:"enabled"`
+	Backend  string              `yaml:"backend"`
+	TTL      time.Duration       `yaml:"ttl"`
+	MaxSize  int                 `yaml:"max_size"`
+	Redis    RedisConfig         `yaml:"redis"`
+	Semantic SemanticCacheConfig `yaml:"semantic"`
+}
+
+type SemanticCacheConfig struct {
+	Enabled   bool    `yaml:"enabled"`
+	Provider  string  `yaml:"provider"`  // "openai" or "ollama"
+	BaseURL   string  `yaml:"base_url"`  // embedding API base URL
+	APIKey    string  `yaml:"api_key"`   // embedding API key
+	Model     string  `yaml:"model"`     // embedding model name
+	Threshold float64 `yaml:"threshold"` // similarity threshold (0.0-1.0)
+	MaxSize   int     `yaml:"max_size"`  // max cached embeddings
+}
+
+type WebhookConfig struct {
+	URL    string `yaml:"url"`
+	Secret string `yaml:"secret"`
+}
+
+type DatabaseConfig struct {
+	Enabled    bool   `yaml:"enabled"`
+	ConnString string `yaml:"conn_string"`
+}
+
+type AdminConfig struct {
+	Token   string `yaml:"token"`
+	GraphQL struct {
+		Enabled bool `yaml:"enabled"`
+	} `yaml:"graphql"`
+}
+
+type AliasConfig struct {
+	Models map[string]string `yaml:"models"`
+}
+
+type TransformConfig struct {
+	SystemPromptPrefix  string                  `yaml:"system_prompt_prefix"`
+	SystemPromptSuffix  string                  `yaml:"system_prompt_suffix"`
+	DefaultSystemPrompt string                  `yaml:"default_system_prompt"`
+	Response            ResponseTransformConfig `yaml:"response"`
+}
+
+type ResponseTransformConfig struct {
+	StripPII      bool              `yaml:"strip_pii"`
+	ContentPrefix string            `yaml:"content_prefix"`
+	ContentSuffix string            `yaml:"content_suffix"`
+	Replacements  map[string]string `yaml:"replacements"`
+}
+
+type AnalyticsConfig struct {
+	Enabled          bool          `yaml:"enabled"`
+	RetentionHours   int           `yaml:"retention_hours"`
+	FlushInterval    time.Duration `yaml:"flush_interval"`
+	AnomalyDetection AnomalyConfig `yaml:"anomaly_detection"`
+}
+
+type AnomalyConfig struct {
+	Enabled            bool             `yaml:"enabled"`
+	EvaluationInterval time.Duration    `yaml:"evaluation_interval"`
+	Static             StaticThresholds `yaml:"static"`
+	Baseline           BaselineConfig   `yaml:"baseline"`
+}
+
+type StaticThresholds struct {
+	ErrorRateMax         float64 `yaml:"error_rate_max"`
+	P95LatencyMax        int64   `yaml:"p95_latency_max"`
+	RequestsPerMinuteMax int64   `yaml:"requests_per_minute_max"`
+	CostPerMinuteMax     float64 `yaml:"cost_per_minute_max"`
+}
+
+type BaselineConfig struct {
+	Window          time.Duration `yaml:"window"`
+	StddevThreshold float64       `yaml:"stddev_threshold"`
+}
+
+type BudgetsConfig struct {
+	Enabled bool                    `yaml:"enabled"`
+	Global  BudgetLimitConfig       `yaml:"global"`
+	Tenants map[string]TenantBudget `yaml:"tenants"`
+}
+
+type BudgetLimitConfig struct {
+	Monthly float64 `yaml:"monthly"`
+	Daily   float64 `yaml:"daily"`
+	AlertAt int     `yaml:"alert_at"`
+	WarnAt  int     `yaml:"warn_at"`
+}
+
+type TenantBudget struct {
+	Monthly float64                      `yaml:"monthly"`
+	Daily   float64                      `yaml:"daily"`
+	AlertAt int                          `yaml:"alert_at"`
+	WarnAt  int                          `yaml:"warn_at"`
+	Models  map[string]BudgetLimitConfig `yaml:"models"`
+}
+
+type CostOptConfig struct {
+	Enabled             bool `yaml:"enabled"`
+	MinQualityTolerance int  `yaml:"min_quality_tolerance"` // max quality drop %
+	MinRequestVolume    int  `yaml:"min_request_volume"`
+}
+
+type ServerConfig struct {
+	Host             string        `yaml:"host"`
+	Port             int           `yaml:"port"`
+	AdminPort        int           `yaml:"admin_port"`
+	GRPCPort         int           `yaml:"grpc_port"`
+	ReadTimeout      time.Duration `yaml:"read_timeout"`
+	WriteTimeout     time.Duration `yaml:"write_timeout"`
+	GracefulShutdown time.Duration `yaml:"graceful_shutdown"`
+	MaxBodySize      int64         `yaml:"max_body_size"`
+	CORS             CORSConfig    `yaml:"cors"`
+}
+
+type CORSConfig struct {
+	Enabled          bool     `yaml:"enabled"`
+	AllowedOrigins   []string `yaml:"allowed_origins"`
+	AllowedMethods   []string `yaml:"allowed_methods"`
+	AllowedHeaders   []string `yaml:"allowed_headers"`
+	ExposedHeaders   []string `yaml:"exposed_headers"`
+	AllowCredentials bool     `yaml:"allow_credentials"`
+	MaxAge           int      `yaml:"max_age"`
+}
+
+// ProviderAPIKey represents one entry in the api_keys list for a provider.
+// Use Key for a literal value (dev/testing) or KeyEnv for a secret from an env var (production).
+type ProviderAPIKey struct {
+	Key    string `yaml:"key"`
+	KeyEnv string `yaml:"key_env"`
+}
+
+type ProviderConfig struct {
+	Name         string            `yaml:"name"`
+	Type         string            `yaml:"type"`
+	Enabled      bool              `yaml:"enabled"`
+	Default      bool              `yaml:"default"`
+	BaseURL      string            `yaml:"base_url"`
+	APIKeyEnv    string            `yaml:"api_key_env"`   // backward compat: single key from env
+	APIKeys      []ProviderAPIKey  `yaml:"api_keys"`      // multi-key rotation
+	KeySelection string            `yaml:"key_selection"` // "round-robin" (default; only supported strategy)
+	Models       []string          `yaml:"models"`
+	Timeout      time.Duration     `yaml:"timeout"`
+	MaxRetries   int               `yaml:"max_retries"`
+	Retry        RetryConfig       `yaml:"retry"`
+	APIVersion   string            `yaml:"api_version"`
+	Config       map[string]string `yaml:"config"`
+	Region       string            `yaml:"region"`
+}
+
+type RetryConfig struct {
+	MaxAttempts          int           `yaml:"max_attempts"`
+	InitialBackoff       time.Duration `yaml:"initial_backoff"`
+	MaxBackoff           time.Duration `yaml:"max_backoff"`
+	BackoffMultiplier    float64       `yaml:"backoff_multiplier"`
+	Jitter               bool          `yaml:"jitter"`
+	RetryableStatusCodes []int         `yaml:"retryable_status_codes"`
+}
+
+type RegionConfig struct {
+	Name      string   `yaml:"name"`
+	Providers []string `yaml:"providers"`
+	Strategy  string   `yaml:"strategy"`
+}
+
+type RouteConfig struct {
+	Match     RouteMatch     `yaml:"match"`
+	Providers []string       `yaml:"providers"`
+	Strategy  string         `yaml:"strategy"`
+	Canary    *CanaryConfig  `yaml:"canary,omitempty"`
+	Regions   []RegionConfig `yaml:"regions,omitempty"`
+}
+
+type CanaryConfig struct {
+	TargetProvider      string        `yaml:"target_provider"`
+	Stages              []int         `yaml:"stages"`
+	ObservationWindow   time.Duration `yaml:"observation_window"`
+	ErrorThreshold      float64       `yaml:"error_threshold"`
+	LatencyP95Threshold int64         `yaml:"latency_p95_threshold"`
+}
+
+type RouteMatch struct {
+	Model string `yaml:"model"`
+}
+
+type APIKeyEntry struct {
+	Key    string `json:"key"     yaml:"key"`
+	KeyEnv string `json:"key_env" yaml:"key_env"`
+	Role   string `json:"role"    yaml:"role"`
+}
+
+// UnmarshalYAML handles both plain string ("key-value") and object ({key: "x", role: "admin"}) formats.
+func (e *APIKeyEntry) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		e.Key = value.Value
+		e.Role = "operator"
+		return nil
+	}
+	if value.Kind != yaml.MappingNode {
+		return fmt.Errorf("api key entry must be a string or mapping")
+	}
+	for i := 0; i < len(value.Content); i += 2 {
+		key := value.Content[i].Value
+		val := value.Content[i+1].Value
+		switch key {
+		case "key":
+			e.Key = val
+		case "key_env":
+			e.KeyEnv = val
+		case "role":
+			e.Role = val
+		}
+	}
+	if e.Role == "" {
+		e.Role = "operator"
+	}
+	return nil
+}
+
+func (e APIKeyEntry) resolvedKey() string {
+	if strings.TrimSpace(e.Key) != "" {
+		return strings.TrimSpace(e.Key)
+	}
+	if strings.TrimSpace(e.KeyEnv) != "" {
+		return strings.TrimSpace(os.Getenv(strings.TrimSpace(e.KeyEnv)))
+	}
+	return ""
+}
+
+type TenantMatch struct {
+	Tenant *TenantConfig
+	Role   string
+}
+
+type TenantConfig struct {
+	ID            string           `yaml:"id"`
+	Name          string           `yaml:"name"`
+	APIKeys       []APIKeyEntry    `yaml:"api_keys"`
+	RateLimit     TenantRateLimit  `yaml:"rate_limit"`
+	AllowedModels []string         `yaml:"allowed_models"`
+	Transform     *TransformConfig `yaml:"transform,omitempty"`
+}
+
+type TenantRateLimit struct {
+	RequestsPerMinute int `yaml:"requests_per_minute"`
+	TokensPerMinute   int `yaml:"tokens_per_minute"`
+}
+
+type RateLimitConfig struct {
+	Backend string      `yaml:"backend"`
+	Redis   RedisConfig `yaml:"redis"`
+}
+
+type RedisConfig struct {
+	Address  string `yaml:"address"`
+	Password string `yaml:"password"`
+	DB       int    `yaml:"db"`
+}
+
+type PoliciesConfig struct {
+	GovernanceMode string         `yaml:"governance_mode"` // "governance" (fail-closed) or "permissive" (fail-open); default "governance"
+	BreakGlass     bool           `yaml:"break_glass"`     // when true, temporarily overrides to permissive mode
+	Input          []PolicyConfig `yaml:"input"`
+	Output         []PolicyConfig `yaml:"output"`
+}
+
+type PolicyConfig struct {
+	Name     string        `yaml:"name"`
+	Type     string        `yaml:"type"`
+	Action   string        `yaml:"action"`
+	Keywords []string      `yaml:"keywords"`
+	Patterns []string      `yaml:"patterns"`
+	Path     string        `yaml:"path"`
+	Timeout  time.Duration `yaml:"timeout"`
+	OnError  string        `yaml:"on_error"`
+}
+
+type TelemetryConfig struct {
+	Enabled  bool          `yaml:"enabled"`
+	Exporter string        `yaml:"exporter"`
+	OTLP     OTLPConfig    `yaml:"otlp"`
+	Metrics  MetricsConfig `yaml:"metrics"`
+}
+
+type OTLPConfig struct {
+	Endpoint string `yaml:"endpoint"`
+	Insecure bool   `yaml:"insecure"`
+}
+
+type MetricsConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	Path    string `yaml:"path"`
+}
+
+type LoggingConfig struct {
+	Level  string `yaml:"level"`
+	Format string `yaml:"format"`
+}
+
+func Load(path string) (*Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading config file: %w", err)
+	}
+
+	cfg := &Config{}
+	if err := yaml.Unmarshal(data, cfg); err != nil {
+		return nil, fmt.Errorf("parsing config file: %w", err)
+	}
+
+	setDefaults(cfg)
+	if err := resolveTenantAPIKeys(cfg); err != nil {
+		return nil, err
+	}
+	if err := validateConfig(cfg); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+func resolveTenantAPIKeys(cfg *Config) error {
+	for i := range cfg.Tenants {
+		for j := range cfg.Tenants[i].APIKeys {
+			entry := &cfg.Tenants[i].APIKeys[j]
+			entry.Key = strings.TrimSpace(entry.Key)
+			entry.KeyEnv = strings.TrimSpace(entry.KeyEnv)
+			if entry.Key != "" && entry.KeyEnv != "" {
+				return fmt.Errorf("tenant %q api_keys[%d]: specify either key or key_env, not both", cfg.Tenants[i].ID, j)
+			}
+			if entry.Key == "" && entry.KeyEnv != "" {
+				value := strings.TrimSpace(os.Getenv(entry.KeyEnv))
+				if value == "" {
+					return fmt.Errorf("tenant %q api_keys[%d]: environment variable %q is not set", cfg.Tenants[i].ID, j, entry.KeyEnv)
+				}
+				entry.Key = value
+			}
+		}
+	}
+	return nil
+}
+
+func setDefaults(cfg *Config) {
+	if cfg.Server.Host == "" {
+		cfg.Server.Host = "0.0.0.0"
+	}
+	if cfg.Server.Port == 0 {
+		cfg.Server.Port = 8080
+	}
+	if cfg.Server.AdminPort == 0 {
+		cfg.Server.AdminPort = 8081
+	}
+	if cfg.Server.GRPCPort == 0 {
+		cfg.Server.GRPCPort = 9091
+	}
+	if cfg.Server.ReadTimeout == 0 {
+		cfg.Server.ReadTimeout = 30 * time.Second
+	}
+	if cfg.Server.WriteTimeout == 0 {
+		cfg.Server.WriteTimeout = 120 * time.Second
+	}
+	if cfg.Server.GracefulShutdown == 0 {
+		cfg.Server.GracefulShutdown = 10 * time.Second
+	}
+	if cfg.RateLimit.Backend == "" {
+		cfg.RateLimit.Backend = "memory"
+	}
+	if cfg.Policies.GovernanceMode == "" {
+		cfg.Policies.GovernanceMode = "governance"
+	}
+	if cfg.Logging.Level == "" {
+		cfg.Logging.Level = "info"
+	}
+	if cfg.Logging.Format == "" {
+		cfg.Logging.Format = "json"
+	}
+	if cfg.Telemetry.Exporter == "" {
+		cfg.Telemetry.Exporter = "stdout"
+	}
+	if cfg.Telemetry.Metrics.Path == "" {
+		cfg.Telemetry.Metrics.Path = "/metrics"
+	}
+	if cfg.Cache.Backend == "" {
+		cfg.Cache.Backend = "memory"
+	}
+	if cfg.Cache.TTL == 0 {
+		cfg.Cache.TTL = 5 * time.Minute
+	}
+	if cfg.Cache.MaxSize == 0 {
+		cfg.Cache.MaxSize = 1000
+	}
+	if cfg.Cache.Semantic.Threshold == 0 {
+		cfg.Cache.Semantic.Threshold = 0.92
+	}
+	if cfg.Cache.Semantic.MaxSize == 0 {
+		cfg.Cache.Semantic.MaxSize = 1000
+	}
+	if cfg.Cache.Semantic.Model == "" {
+		cfg.Cache.Semantic.Model = "text-embedding-3-small"
+	}
+	if cfg.Analytics.RetentionHours == 0 {
+		cfg.Analytics.RetentionHours = 48
+	}
+	if cfg.Analytics.FlushInterval == 0 {
+		cfg.Analytics.FlushInterval = time.Hour
+	}
+	if cfg.Analytics.AnomalyDetection.EvaluationInterval == 0 {
+		cfg.Analytics.AnomalyDetection.EvaluationInterval = time.Minute
+	}
+	if cfg.Analytics.AnomalyDetection.Static.ErrorRateMax == 0 {
+		cfg.Analytics.AnomalyDetection.Static.ErrorRateMax = 20
+	}
+	if cfg.Analytics.AnomalyDetection.Static.P95LatencyMax == 0 {
+		cfg.Analytics.AnomalyDetection.Static.P95LatencyMax = 5000
+	}
+	if cfg.Analytics.AnomalyDetection.Static.RequestsPerMinuteMax == 0 {
+		cfg.Analytics.AnomalyDetection.Static.RequestsPerMinuteMax = 10000
+	}
+	if cfg.Analytics.AnomalyDetection.Static.CostPerMinuteMax == 0 {
+		cfg.Analytics.AnomalyDetection.Static.CostPerMinuteMax = 50.0
+	}
+	if cfg.Analytics.AnomalyDetection.Baseline.Window == 0 {
+		cfg.Analytics.AnomalyDetection.Baseline.Window = 24 * time.Hour
+	}
+	if cfg.Analytics.AnomalyDetection.Baseline.StddevThreshold == 0 {
+		cfg.Analytics.AnomalyDetection.Baseline.StddevThreshold = 3
+	}
+	if cfg.Budgets.Global.AlertAt == 0 {
+		cfg.Budgets.Global.AlertAt = 80
+	}
+	if cfg.Budgets.Global.WarnAt == 0 {
+		cfg.Budgets.Global.WarnAt = 90
+	}
+	if cfg.CostOpt.MinQualityTolerance == 0 {
+		cfg.CostOpt.MinQualityTolerance = 10
+	}
+	if cfg.CostOpt.MinRequestVolume == 0 {
+		cfg.CostOpt.MinRequestVolume = 10
+	}
+	for i := range cfg.Providers {
+		if cfg.Providers[i].Retry.MaxAttempts == 0 {
+			cfg.Providers[i].Retry.MaxAttempts = 1
+		}
+		if cfg.Providers[i].Retry.InitialBackoff == 0 {
+			cfg.Providers[i].Retry.InitialBackoff = 200 * time.Millisecond
+		}
+		if cfg.Providers[i].Retry.MaxBackoff == 0 {
+			cfg.Providers[i].Retry.MaxBackoff = 5 * time.Second
+		}
+		if cfg.Providers[i].Retry.BackoffMultiplier == 0 {
+			cfg.Providers[i].Retry.BackoffMultiplier = 2.0
+		}
+		if len(cfg.Providers[i].Retry.RetryableStatusCodes) == 0 {
+			cfg.Providers[i].Retry.RetryableStatusCodes = []int{429, 500, 502, 503, 504}
+		}
+	}
+
+	// Eval defaults
+	if cfg.Eval.Builtin.MinResponseTokens == 0 {
+		cfg.Eval.Builtin.MinResponseTokens = 10
+	}
+	if cfg.Eval.Builtin.LatencyMultiplier == 0 {
+		cfg.Eval.Builtin.LatencyMultiplier = 2.0
+	}
+	if cfg.Eval.Webhook.Timeout == 0 {
+		cfg.Eval.Webhook.Timeout = 5 * time.Second
+	}
+
+	// Load shedding defaults
+	if cfg.LoadShed.MaxConcurrent == 0 {
+		cfg.LoadShed.MaxConcurrent = 100
+	}
+	if cfg.LoadShed.QueueSize == 0 {
+		cfg.LoadShed.QueueSize = 50
+	}
+	if cfg.LoadShed.QueueTimeout == 0 {
+		cfg.LoadShed.QueueTimeout = 10 * time.Second
+	}
+
+	// WebSocket defaults
+	if cfg.WebSocket.PingInterval == 0 {
+		cfg.WebSocket.PingInterval = 30 * time.Second
+	}
+
+	// Federation defaults
+	if cfg.Federation.ControlPlane.SyncInterval == 0 {
+		cfg.Federation.ControlPlane.SyncInterval = 30 * time.Second
+	}
+
+	// Tool policy defaults
+	if cfg.ToolPolicies.DefaultDecision == "" {
+		cfg.ToolPolicies.DefaultDecision = "block"
+	}
+
+	// Shell gate defaults
+	if cfg.ShellGate.DefaultDecision == "" {
+		cfg.ShellGate.DefaultDecision = "block"
+	}
+
+	// SQL gate defaults
+	if cfg.SQLGate.DefaultDecision == "" {
+		cfg.SQLGate.DefaultDecision = "block"
+	}
+
+	if cfg.MCPGateway.Port == 0 {
+		cfg.MCPGateway.Port = 8082
+	}
+
+	// Capability defaults
+	if cfg.Capability.DefaultTTL == 0 {
+		cfg.Capability.DefaultTTL = 5 * time.Minute
+	}
+
+	// HTTP gate defaults
+	if cfg.HTTPGate.Port == 0 {
+		cfg.HTTPGate.Port = 8083
+	}
+
+	// Resource policy defaults
+	if cfg.ResourcePolicies.DefaultDecision == "" {
+		cfg.ResourcePolicies.DefaultDecision = "block"
+	}
+
+	// Manifest defaults
+	if cfg.Manifests.DefaultExpiration == "" {
+		cfg.Manifests.DefaultExpiration = "1h"
+	}
+	if cfg.Manifests.DefaultRiskTier == "" {
+		cfg.Manifests.DefaultRiskTier = "medium"
+	}
+	if cfg.Manifests.EnforcementMode == "" {
+		cfg.Manifests.EnforcementMode = "warn"
+	}
+
+	// Approval integration defaults
+	if cfg.ApprovalIntegrations.Timeout == 0 {
+		cfg.ApprovalIntegrations.Timeout = 30 * time.Minute
+	}
+
+	// Behavioral engine defaults
+	if cfg.Behavioral.KillSwitchScore == 0 {
+		cfg.Behavioral.KillSwitchScore = 80
+	}
+	if cfg.Behavioral.WindowMinutes == 0 {
+		cfg.Behavioral.WindowMinutes = 30
+	}
+
+	// Resilience defaults
+	if cfg.Resilience.HealthInterval == 0 {
+		cfg.Resilience.HealthInterval = 30 * time.Second
+	}
+	if cfg.Resilience.Retention.AuditLogDays == 0 {
+		cfg.Resilience.Retention.AuditLogDays = 90
+	}
+	if cfg.Resilience.Retention.EvidenceDays == 0 {
+		cfg.Resilience.Retention.EvidenceDays = 365
+	}
+	if cfg.Resilience.Retention.ApprovalHistoryDays == 0 {
+		cfg.Resilience.Retention.ApprovalHistoryDays = 180
+	}
+	if cfg.Resilience.Retention.CompressAfterDays == 0 {
+		cfg.Resilience.Retention.CompressAfterDays = 30
+	}
+	if cfg.Resilience.BackupDir == "" {
+		cfg.Resilience.BackupDir = "data/backups"
+	}
+	if cfg.Resilience.CircuitBreaker.Threshold == 0 {
+		cfg.Resilience.CircuitBreaker.Threshold = 5
+	}
+	if cfg.Resilience.CircuitBreaker.ResetAfter == 0 {
+		cfg.Resilience.CircuitBreaker.ResetAfter = 30 * time.Second
+	}
+
+	// CORS defaults
+	if cfg.Server.CORS.Enabled {
+		if len(cfg.Server.CORS.AllowedOrigins) == 0 {
+			cfg.Server.CORS.AllowedOrigins = []string{"*"}
+		}
+		if len(cfg.Server.CORS.AllowedMethods) == 0 {
+			cfg.Server.CORS.AllowedMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
+		}
+		if len(cfg.Server.CORS.AllowedHeaders) == 0 {
+			cfg.Server.CORS.AllowedHeaders = []string{"Authorization", "Content-Type", "X-API-Key"}
+		}
+		if cfg.Server.CORS.MaxAge == 0 {
+			cfg.Server.CORS.MaxAge = 86400
+		}
+	}
+}
+
+func (c *Config) FindTenantByAPIKey(apiKey string) *TenantMatch {
+	// Use constant-time comparison to prevent timing attacks.
+	// Hash both sides so length differences don't leak info.
+	inputHash := sha256.Sum256([]byte(apiKey))
+	var match *TenantMatch
+	for i := range c.Tenants {
+		for _, entry := range c.Tenants[i].APIKeys {
+			key := entry.resolvedKey()
+			if key == "" {
+				continue
+			}
+			keyHash := sha256.Sum256([]byte(key))
+			if subtle.ConstantTimeCompare(inputHash[:], keyHash[:]) == 1 {
+				match = &TenantMatch{
+					Tenant: &c.Tenants[i],
+					Role:   entry.Role,
+				}
+			}
+		}
+	}
+	return match
+}
+
+func validateConfig(cfg *Config) error {
+	// --- Server ---
+	if cfg.Server.MaxBodySize < 0 {
+		return fmt.Errorf("server.max_body_size must not be negative (got %d)", cfg.Server.MaxBodySize)
+	}
+
+	// --- Providers ---
+	providerNames := make(map[string]bool, len(cfg.Providers))
+	for i, provider := range cfg.Providers {
+		if provider.Name == "" {
+			return fmt.Errorf("providers[%d]: provider name must not be empty", i)
+		}
+		if provider.Type == "" {
+			return fmt.Errorf("provider %q: provider type must not be empty", provider.Name)
+		}
+		if providerNames[provider.Name] {
+			return fmt.Errorf("duplicate provider name %q", provider.Name)
+		}
+		providerNames[provider.Name] = true
+		if provider.Retry.MaxAttempts < 1 {
+			return fmt.Errorf("provider %q retry.max_attempts must be at least 1", provider.Name)
+		}
+	}
+
+	// --- Routes ---
+	for i, route := range cfg.Routes {
+		if len(route.Providers) == 0 {
+			return fmt.Errorf("routes[%d]: no providers specified", i)
+		}
+		for _, p := range route.Providers {
+			if !providerNames[p] {
+				return fmt.Errorf("routes[%d]: references unknown provider %q", i, p)
+			}
+		}
+	}
+
+	// --- Tenants ---
+	tenantIDs := make(map[string]bool, len(cfg.Tenants))
+	apiKeys := make(map[string]string)
+	validRoles := map[string]bool{
+		"viewer":   true,
+		"operator": true,
+		"admin":    true,
+	}
+	for i, tenant := range cfg.Tenants {
+		if tenant.ID == "" {
+			return fmt.Errorf("tenants[%d]: tenant id must not be empty", i)
+		}
+		if tenantIDs[tenant.ID] {
+			return fmt.Errorf("duplicate tenant id %q", tenant.ID)
+		}
+		tenantIDs[tenant.ID] = true
+		if len(tenant.APIKeys) == 0 {
+			return fmt.Errorf("tenant %q: api_keys must not be empty", tenant.ID)
+		}
+		for j, entry := range tenant.APIKeys {
+			key := strings.TrimSpace(entry.Key)
+			if key == "" {
+				return fmt.Errorf("tenant %q api_keys[%d]: key must not be empty", tenant.ID, j)
+			}
+			if !validRoles[entry.Role] {
+				return fmt.Errorf("tenant %q api_keys[%d]: role %q must be one of viewer, operator, admin", tenant.ID, j, entry.Role)
+			}
+			if owner, exists := apiKeys[key]; exists {
+				return fmt.Errorf("tenant %q api_keys[%d]: duplicate api key already used by tenant %q", tenant.ID, j, owner)
+			}
+			apiKeys[key] = tenant.ID
+		}
+		if tenant.RateLimit.RequestsPerMinute < 0 {
+			return fmt.Errorf("tenant %q: requests_per_minute must not be negative", tenant.ID)
+		}
+		if tenant.RateLimit.TokensPerMinute < 0 {
+			return fmt.Errorf("tenant %q: tokens_per_minute must not be negative", tenant.ID)
+		}
+	}
+
+	return nil
+}
+
+// knownToolPolicyProtocols enumerates the protocol identifiers the policy
+// engine actually evaluates against ActionEnvelopes. "*" is a wildcard.
+var knownToolPolicyProtocols = map[string]bool{
+	"*":     true,
+	"mcp":   true,
+	"http":  true,
+	"shell": true,
+	"sql":   true,
+	"git":   true,
+}
+
+// ValidateToolPolicies returns human-readable warnings for tool-policy rules
+// that look like they will never match (for example, references to a
+// protocol that is not in the known set). It deliberately never returns an
+// error: the goal is to surface debugging hints, not reject the config.
+//
+// Warning format matches the contract in issue #78:
+//
+//	[config] tool policy rule #N references unknown protocol %q, rule will never match
+func ValidateToolPolicies(cfg *Config) []string {
+	if cfg == nil {
+		return nil
+	}
+	var warnings []string
+	for i, rule := range cfg.ToolPolicies.Rules {
+		proto := strings.TrimSpace(rule.Protocol)
+		if proto == "" {
+			// An empty protocol means "any" in the engine; not a warning.
+			continue
+		}
+		if !knownToolPolicyProtocols[proto] {
+			warnings = append(warnings,
+				fmt.Sprintf("[config] tool policy rule #%d references unknown protocol %q, rule will never match", i, proto))
+		}
+	}
+	return warnings
+}

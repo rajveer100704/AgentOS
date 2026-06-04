@@ -1,0 +1,42 @@
+server:
+  port: 8080
+  admin_port: 8081
+
+providers:
+  - name: "mock"
+    type: "mock"
+    enabled: true
+    default: true
+
+tenants:
+  - id: "local-user"
+    name: "Local User"
+    api_keys:
+      - key: "local-demo-key"
+        role: "admin"
+    rate_limit:
+      requests_per_minute: 60
+      tokens_per_minute: 100000
+
+routes:
+  - match:
+      model: "*"
+    providers: ["mock"]
+    strategy: "priority"
+
+policies:
+  governance_mode: "governance"
+  input:
+    - name: "block-instruction-override"
+      type: "keyword"
+      action: "block"
+      keywords:
+        - "ignore previous instructions"
+        - "ignore all instructions"
+
+telemetry:
+  enabled: true
+  exporter: "stdout"
+  metrics:
+    enabled: true
+    path: "/metrics"

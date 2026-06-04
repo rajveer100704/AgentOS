@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "AgentOS": {
+      "command": "bash",
+      "args": ["PATH_TO_AgentOS/scripts/mcp-stdio-bridge.sh"]
+    }
+  }
+}

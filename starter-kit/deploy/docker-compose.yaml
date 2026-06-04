@@ -1,0 +1,67 @@
+# Production deployments should put nginx/Caddy in front of these ports.
+# See ../../docs/deploy/reverse-proxy.md for working nginx + Caddy snippets
+# (TLS, SSE buffering, WebSocket upgrade, admin-port isolation).
+services:
+  AgentOS:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+      - "8082:8082"
+    environment:
+      - AgentOS_DB_HOST=postgres
+      - AgentOS_DB_PORT=5432
+      - AgentOS_DB_USER=AgentOS
+      - AgentOS_DB_PASSWORD=AgentOS
+      - AgentOS_DB_NAME=AgentOS
+      - AgentOS_REDIS_URL=redis://redis:6379
+    volumes:
+      - ../../configs/starter-kit.yaml:/app/configs/AgentOS.yaml
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: AgentOS
+      POSTGRES_PASSWORD: AgentOS
+      POSTGRES_DB: AgentOS
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U AgentOS"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
