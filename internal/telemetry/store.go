@@ -138,5 +138,5 @@ func (p *storeProcessor) OnEnd(span sdktrace.ReadOnlySpan) {
 }
 
 // Shutdown is a no-op for an in-memory processor.
-func (p *storeProcessor) Shutdown(_ context.Context) error  { return nil }
+func (p *storeProcessor) Shutdown(_ context.Context) error   { return nil }
 func (p *storeProcessor) ForceFlush(_ context.Context) error { return nil }

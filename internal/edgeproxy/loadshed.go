@@ -52,10 +52,10 @@ func NewAdaptiveLoadshed(cfg LoadShedConfig) *AdaptiveLoadshed {
 		threshold = 80.0
 	}
 	return &AdaptiveLoadshed{
-		thresholdPct:  threshold,
-		maxQueueDepth: maxQueue,
+		thresholdPct:   threshold,
+		maxQueueDepth:  maxQueue,
 		priorityHeader: header,
-		cpuSamples:    make([]uint64, cpuSampleRing),
+		cpuSamples:     make([]uint64, cpuSampleRing),
 	}
 }
 

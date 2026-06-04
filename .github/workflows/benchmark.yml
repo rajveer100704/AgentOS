@@ -27,7 +27,7 @@ jobs:
           BENCH_RESULTS_FILE: benchmark-results.txt
         run: |
           export PATH="$PATH:$(go env GOPATH)/bin"
-          bash scripts/benchmark.sh
+          bash scripts/benchmarks/benchmark.sh
 
       - name: Upload benchmark artifact
         uses: actions/upload-artifact@v7

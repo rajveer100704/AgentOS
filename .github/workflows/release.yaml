@@ -25,17 +25,17 @@ jobs:
 
       - name: Build binaries
         run: |
-          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o aegisflow-linux-amd64 ./cmd/aegisflow
-          GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o aegisflow-linux-arm64 ./cmd/aegisflow
-          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o aegisflow-darwin-arm64 ./cmd/aegisflow
-          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o aegisflow-darwin-amd64 ./cmd/aegisflow
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o agentos-linux-amd64 ./cmd/agentos
+          GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o agentos-linux-arm64 ./cmd/agentos
+          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o agentos-darwin-arm64 ./cmd/agentos
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o agentos-darwin-amd64 ./cmd/agentos
 
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            aegisflow-linux-amd64
-            aegisflow-linux-arm64
-            aegisflow-darwin-arm64
-            aegisflow-darwin-amd64
+            agentos-linux-amd64
+            agentos-linux-arm64
+            agentos-darwin-arm64
+            agentos-darwin-amd64
           generate_release_notes: true

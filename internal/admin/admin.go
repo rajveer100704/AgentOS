@@ -274,7 +274,6 @@ func WithTraceStore(store *telemetry.TraceStore) ServerOption {
 	}
 }
 
-
 func (s *Server) Router() http.Handler {
 	r := chi.NewRouter()
 	r.Use(chimw.Recoverer)

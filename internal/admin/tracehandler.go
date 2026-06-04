@@ -56,13 +56,13 @@ func (h *TraceHandler) ListTraces(w http.ResponseWriter, r *http.Request) {
 
 	// Convert Duration to milliseconds for JSON readability.
 	type wireTrace struct {
-		TraceID   string            `json:"trace_id"`
-		SpanID    string            `json:"span_id"`
-		Operation string            `json:"operation"`
-		DurationMs int64            `json:"duration_ms"`
-		Status    string            `json:"status"`
-		Attrs     map[string]string `json:"attrs,omitempty"`
-		StartTime string            `json:"start_time"`
+		TraceID    string            `json:"trace_id"`
+		SpanID     string            `json:"span_id"`
+		Operation  string            `json:"operation"`
+		DurationMs int64             `json:"duration_ms"`
+		Status     string            `json:"status"`
+		Attrs      map[string]string `json:"attrs,omitempty"`
+		StartTime  string            `json:"start_time"`
 	}
 
 	wire := make([]wireTrace, 0, len(traces))
@@ -233,4 +233,3 @@ func (h *TraceHandler) EdgeMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
-

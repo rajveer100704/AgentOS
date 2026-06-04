@@ -150,9 +150,9 @@ func (ep *EdgeProxy) ListenAndServeTLS() error {
 
 	// ConfigureServer enables HTTP/2 on the TLS server.
 	if err := http2.ConfigureServer(ep.tlsSrv, &http2.Server{
-		MaxConcurrentStreams:         250,
-		MaxReadFrameSize:             1 << 20, // 1 MiB
-		IdleTimeout:                 60 * time.Second,
+		MaxConcurrentStreams: 250,
+		MaxReadFrameSize:     1 << 20, // 1 MiB
+		IdleTimeout:          60 * time.Second,
 	}); err != nil {
 		return fmt.Errorf("edgeproxy: configuring HTTP/2: %w", err)
 	}
@@ -217,7 +217,8 @@ func (ep *EdgeProxy) Shutdown(ctx context.Context) {
 }
 
 // buildHandler constructs the edge proxy's http.Handler chain:
-//   Connection counter → Load shedder → OTel span → Circuit breaker → ReverseProxy
+//
+//	Connection counter → Load shedder → OTel span → Circuit breaker → ReverseProxy
 func (ep *EdgeProxy) buildHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Track active connections for Prometheus.

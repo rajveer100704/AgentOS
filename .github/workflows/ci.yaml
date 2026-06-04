@@ -56,4 +56,4 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Docker Compose smoke test
-        run: bash scripts/compose_smoke.sh
+        run: bash scripts/tooling/compose_smoke.sh
