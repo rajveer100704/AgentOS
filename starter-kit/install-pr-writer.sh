@@ -160,15 +160,15 @@ YAML
 pass "wrote configs/pr-writer.yaml"
 
 # ---- 4. Build ----
-hdr "4) Building AgentOS + agentctl"
+hdr "4) Building agentos + agentctl"
 
 cd "$PROJECT_ROOT"
-if ! go build -o bin/AgentOS ./cmd/AgentOS >"$LOG_DIR/build.log" 2>&1; then
-    fail "go build AgentOS"
+if ! go build -o bin/agentos ./cmd/agentos >"$LOG_DIR/build.log" 2>&1; then
+    fail "go build agentos"
     tail -20 "$LOG_DIR/build.log"
     cleanup_fail
 fi
-pass "bin/AgentOS"
+pass "bin/agentos"
 
 if ! go build -o bin/agentctl ./cmd/agentctl >>"$LOG_DIR/build.log" 2>&1; then
     fail "go build agentctl"
@@ -180,11 +180,11 @@ pass "bin/agentctl"
 # ---- 5. Start AgentOS ----
 hdr "5) Starting AgentOS"
 
-nohup bin/AgentOS --config configs/pr-writer.yaml \
-    >"$LOG_DIR/AgentOS.log" 2>&1 &
-AEGIS_PID=$!
-echo "$AEGIS_PID" > "$LOG_DIR/AgentOS.pid"
-info "pid $AEGIS_PID -> $LOG_DIR/AgentOS.log"
+nohup bin/agentos --config configs/pr-writer.yaml \
+    >"$LOG_DIR/agentos.log" 2>&1 &
+AGENTOS_PID=$!
+echo "$AGENTOS_PID" > "$LOG_DIR/agentos.pid"
+info "pid $AGENTOS_PID -> $LOG_DIR/agentos.log"
 
 ready=false
 for i in $(seq 1 30); do
@@ -196,7 +196,7 @@ for i in $(seq 1 30); do
 done
 if [ "$ready" != true ]; then
     fail "AgentOS did not become healthy"
-    tail -30 "$LOG_DIR/AgentOS.log"
+    tail -30 "$LOG_DIR/agentos.log"
     cleanup_fail
 fi
 pass "AgentOS healthy on :8080"
@@ -238,7 +238,7 @@ cat > "$PROJECT_ROOT/.mcp.json" <<JSON
       "command": "bash",
       "args": ["$BRIDGE_PATH"],
       "env": {
-        "AgentOS_MCP_URL": "http://localhost:8082/mcp"
+        "AGENTOS_MCP_URL": "http://localhost:8082/mcp"
       }
     }
   }

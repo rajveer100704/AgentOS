@@ -12,8 +12,8 @@
 # notifications (requests with no id), no response is expected, so the bridge
 # stays silent.
 
-AgentOS_MCP_URL="${AgentOS_MCP_URL:-http://localhost:8082/mcp}"
-CURL_MAX_TIME="${AgentOS_MCP_TIMEOUT:-30}"
+AGENTOS_MCP_URL="${AGENTOS_MCP_URL:-http://localhost:8082/mcp}"
+CURL_MAX_TIME="${AGENTOS_MCP_TIMEOUT:-30}"
 
 # extract_id pulls the JSON-RPC "id" token (string, number, or null) out of a
 # request line. Prints the raw JSON token, or nothing if there is no id (which
@@ -30,7 +30,7 @@ while IFS= read -r line; do
   # Ignore blank input lines.
   [ -z "$line" ] && continue
 
-  response=$(curl -s --max-time "$CURL_MAX_TIME" -X POST "$AgentOS_MCP_URL" \
+  response=$(curl -s --max-time "$CURL_MAX_TIME" -X POST "$AGENTOS_MCP_URL" \
     -H "Content-Type: application/json" \
     -d "$line" 2>/dev/null)
 
@@ -47,5 +47,5 @@ while IFS= read -r line; do
   fi
 
   # Reply with a clear, actionable JSON-RPC error so the client fails loudly.
-  echo "{\"jsonrpc\":\"2.0\",\"id\":${id},\"error\":{\"code\":-32000,\"message\":\"AgentOS MCP gateway unreachable at ${AgentOS_MCP_URL}. Is AgentOS running? Start it with 'make run' or './starter-kit/install-pr-writer.sh', then reconnect.\"}}"
+  echo "{\"jsonrpc\":\"2.0\",\"id\":${id},\"error\":{\"code\":-32000,\"message\":\"AgentOS MCP gateway unreachable at ${AGENTOS_MCP_URL}. Is AgentOS running? Start it with 'make run' or './starter-kit/install-pr-writer.sh', then reconnect.\"}}"
 done

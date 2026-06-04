@@ -43,12 +43,12 @@ func (m *MockProvider) ChatCompletion(ctx context.Context, req *types.ChatComple
 		}
 	}
 
-	reply := fmt.Sprintf("This is a mock response from AegisFlow. You said: %q", userMsg)
+	reply := fmt.Sprintf("This is a mock response from AgentOS. You said: %q", userMsg)
 	promptTokens := m.EstimateTokens(userMsg)
 	completionTokens := m.EstimateTokens(reply)
 
 	return &types.ChatCompletionResponse{
-		ID:      fmt.Sprintf("aegis-mock-%d", time.Now().UnixNano()),
+		ID:      fmt.Sprintf("agentos-mock-%d", time.Now().UnixNano()),
 		Object:  "chat.completion",
 		Created: time.Now().Unix(),
 		Model:   req.Model,
@@ -75,9 +75,9 @@ func (m *MockProvider) ChatCompletionStream(ctx context.Context, req *types.Chat
 		}
 	}
 
-	reply := fmt.Sprintf("This is a mock streaming response from AegisFlow. You said: %q", userMsg)
+	reply := fmt.Sprintf("This is a mock streaming response from AgentOS. You said: %q", userMsg)
 	words := strings.Fields(reply)
-	id := fmt.Sprintf("aegis-mock-%d", time.Now().UnixNano())
+	id := fmt.Sprintf("agentos-mock-%d", time.Now().UnixNano())
 
 	pr, pw := io.Pipe()
 

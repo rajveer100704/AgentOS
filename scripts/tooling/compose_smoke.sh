@@ -4,7 +4,7 @@ set -euo pipefail
 COMPOSE_FILE="${COMPOSE_FILE:-deployments/docker-compose.yaml}"
 GATEWAY_URL="${AgentOS_GATEWAY_URL:-http://localhost:8080}"
 ADMIN_URL="${AgentOS_ADMIN_URL:-http://localhost:8081}"
-API_KEY="${AgentOS_API_KEY:-aegis-test-default-001}"
+API_KEY="${AgentOS_API_KEY:-agentos-test-default-001}"
 TMP_DIR="$(mktemp -d)"
 
 cleanup() {

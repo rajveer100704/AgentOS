@@ -520,7 +520,7 @@ func TestIdentityHierarchyE2E(t *testing.T) {
 	if err := store.CreateTeam(identity.Team{ID: "team-1", Name: "Platform", OrgID: "org-1"}); err != nil {
 		t.Fatalf("CreateTeam failed: %v", err)
 	}
-	if err := store.CreateProject(identity.Project{ID: "proj-1", Name: "AegisFlow", TeamID: "team-1"}); err != nil {
+	if err := store.CreateProject(identity.Project{ID: "proj-1", Name: "AgentOS", TeamID: "team-1"}); err != nil {
 		t.Fatalf("CreateProject failed: %v", err)
 	}
 	if err := store.CreateEnvironment(identity.Environment{

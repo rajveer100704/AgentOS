@@ -994,7 +994,7 @@ func (s *Server) handleTestAction(w http.ResponseWriter, r *http.Request) {
 	// Create the action envelope
 	actor := envelope.ActorInfo{
 		Type:      "agent",
-		ID:        "aegisctl-test",
+		ID:        "agentctl-test",
 		SessionID: "test-session",
 		TenantID:  "test-tenant",
 	}

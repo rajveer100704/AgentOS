@@ -50,7 +50,7 @@ curl http://localhost:8080/health
 # Send a chat completion request
 curl -X POST http://localhost:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: aegis-test-default-001" \
+  -H "X-API-Key: agentos-test-default-001" \
   -d '{
     "model": "mock",
     "messages": [{"role": "user", "content": "Hello!"}]
@@ -64,7 +64,7 @@ from openai import OpenAI
 
 client = OpenAI(
     base_url="http://localhost:8080/v1",
-    api_key="aegis-test-default-001"
+    api_key="agentos-test-default-001"
 )
 
 response = client.chat.completions.create(

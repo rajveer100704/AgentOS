@@ -132,7 +132,7 @@ func matchPathPrefix(path, prefix string) bool {
 	if cleanPath == cleanPrefix {
 		return true
 	}
-	return strings.HasPrefix(cleanPath, cleanPrefix+"/")
+	return strings.HasPrefix(cleanPath, cleanPrefix+string(filepath.Separator))
 }
 
 // collectPaths gathers filesystem paths from the working directory and arguments.

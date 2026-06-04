@@ -12,15 +12,15 @@ supply_chain:
 
 # Usage:
 #   # Sign a policy pack
-#   aegisctl supply-chain sign configs/policy-packs/coding-agent-strict.yaml \
+#   agentctl supply-chain sign configs/policy-packs/coding-agent-strict.yaml \
 #     --key 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
 #     --name coding-agent-strict --version 1.0.0 --type policy_pack
 #
 #   # Verify a signed bundle
-#   aegisctl supply-chain verify configs/policy-packs/coding-agent-strict.yaml \
+#   agentctl supply-chain verify configs/policy-packs/coding-agent-strict.yaml \
 #     --signature configs/policy-packs/coding-agent-strict.yaml.sig \
 #     --key 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 #
 #   # List loaded assets via admin API
-#   aegisctl supply-chain list
+#   agentctl supply-chain list
 #   # or: curl http://localhost:8081/admin/v1/supply-chain

@@ -1,21 +1,21 @@
 """
-AegisFlow + OpenAI Python SDK Demo
+AgentOS + OpenAI Python SDK Demo
 
-This demonstrates that AegisFlow is a drop-in replacement for the OpenAI API.
+This demonstrates that AgentOS is a drop-in replacement for the OpenAI API.
 You just change the base_url — no other code changes needed.
 
 Requirements:
   pip install openai
 
-  AegisFlow running on localhost:8080 with Ollama (or mock provider)
+  AgentOS running on localhost:8080 with Ollama (or mock provider)
 """
 
 from openai import OpenAI
 
-# Point the standard OpenAI SDK at AegisFlow
+# Point the standard OpenAI SDK at AgentOS
 client = OpenAI(
     base_url="http://localhost:8080/v1",
-    api_key="aegis-test-default-001",  # AegisFlow tenant key
+    api_key="agentos-test-default-001",  # AgentOS tenant key
 )
 
 
@@ -26,7 +26,7 @@ def demo_chat_completion():
     print("=" * 50)
 
     response = client.chat.completions.create(
-        model="qwen2.5:0.5b",  # Ollama model, routed through AegisFlow
+        model="qwen2.5:0.5b",  # Ollama model, routed through AgentOS
         messages=[
             {"role": "system", "content": "You are a helpful assistant. Be brief."},
             {"role": "user", "content": "What is an API gateway?"},
@@ -60,7 +60,7 @@ def demo_streaming():
 
 
 def demo_model_list():
-    """List available models — shows all providers registered in AegisFlow."""
+    """List available models — shows all providers registered in AgentOS."""
     print("=" * 50)
     print("3. List Models")
     print("=" * 50)
@@ -87,7 +87,7 @@ def demo_mock_provider():
 
 
 def demo_policy_block():
-    """AegisFlow blocks prompt injection before it reaches any provider."""
+    """AgentOS blocks prompt injection before it reaches any provider."""
     print("=" * 50)
     print("5. Policy Engine (jailbreak blocked)")
     print("=" * 50)
@@ -105,7 +105,7 @@ def demo_policy_block():
 
 if __name__ == "__main__":
     print()
-    print("AegisFlow + OpenAI Python SDK Demo")
+    print("AgentOS + OpenAI Python SDK Demo")
     print("No code changes needed — just change base_url")
     print()
 
@@ -117,5 +117,5 @@ if __name__ == "__main__":
 
     print("=" * 50)
     print("All demos complete!")
-    print("AegisFlow is a drop-in replacement for OpenAI API.")
+    print("AgentOS is a drop-in replacement for OpenAI API.")
     print("=" * 50)

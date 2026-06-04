@@ -43,7 +43,7 @@ config:
     name: Default Tenant
     role: admin
     # Demo key for local chart trials. Use apiKeySecret for production.
-    apiKey: aegis-test-default-001
+    apiKey: agentos-test-default-001
     rateLimit:
       requestsPerMinute: 60
       tokensPerMinute: 100000

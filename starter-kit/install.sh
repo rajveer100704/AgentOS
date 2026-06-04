@@ -143,12 +143,12 @@ YAML
 if [ "$HAS_DOCKER" = true ]; then
     echo "  Building Docker image..."
     cd "$PROJECT_ROOT"
-    docker build -t AgentOS:starter-kit . -q
+    docker build -t agentos:starter-kit . -q
     echo -e "  ${GREEN}Docker image built${NC}"
 else
     echo "  Building from source..."
     cd "$PROJECT_ROOT"
-    go build -o bin/AgentOS ./cmd/AgentOS
+    go build -o bin/agentos ./cmd/agentos
     go build -o bin/agentctl ./cmd/agentctl
     echo -e "  ${GREEN}Binaries built${NC}"
 fi
@@ -161,15 +161,15 @@ echo -e "${BOLD}Starting AgentOS...${NC}"
 
 if [ "$HAS_DOCKER" = true ]; then
     # Stop any existing instance
-    docker rm -f AgentOS-starter 2>/dev/null || true
+    docker rm -f agentos-starter 2>/dev/null || true
 
     docker run -d \
-        --name AgentOS-starter \
+        --name agentos-starter \
         -p 8080:8080 \
         -p 8081:8081 \
         -p 8082:8082 \
-        -v "$CONFIG_DIR/starter-kit.yaml:/app/configs/AgentOS.yaml" \
-        AgentOS:starter-kit
+        -v "$CONFIG_DIR/starter-kit.yaml:/app/configs/agentos.yaml" \
+        agentos:starter-kit
 
     echo "  Waiting for health check..."
     for i in $(seq 1 30); do
@@ -180,9 +180,9 @@ if [ "$HAS_DOCKER" = true ]; then
     done
 else
     cd "$PROJECT_ROOT"
-    bin/AgentOS --config configs/starter-kit.yaml &
-    AEGIS_PID=$!
-    echo "  PID: $AEGIS_PID"
+    bin/agentos --config configs/starter-kit.yaml &
+    AGENTOS_PID=$!
+    echo "  PID: $AGENTOS_PID"
 
     echo "  Waiting for health check..."
     for i in $(seq 1 15); do

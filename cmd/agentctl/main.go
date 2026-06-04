@@ -210,7 +210,7 @@ func main() {
 	case "test-action":
 		cmdTestAction(adminURL, os.Args[2:])
 	case "test":
-		apiKey := "aegis-test-default-001"
+		apiKey := "agentos-test-default-001"
 		model := "mock"
 		msg := "Hello from agentctl!"
 		if len(os.Args) > 2 {
@@ -479,7 +479,7 @@ func cmdUsage(adminURL string) {
 }
 
 func cmdModels(gatewayURL string) {
-	apiKey := getEnv("AGENTOS_API_KEY", "aegis-test-default-001")
+	apiKey := getEnv("AGENTOS_API_KEY", "agentos-test-default-001")
 	req, _ := http.NewRequest("GET", gatewayURL+"/v1/models", nil)
 	req.Header.Set("X-API-Key", apiKey)
 
@@ -761,7 +761,7 @@ func cmdPending(adminURL string, jsonOut bool) {
 }
 
 func cmdApprove(adminURL, id, comment string) {
-	apiKey := getEnv("AGENTOS_API_KEY", "aegis-test-default-001")
+	apiKey := getEnv("AGENTOS_API_KEY", "agentos-test-default-001")
 	body, _ := marshalJSON(map[string]string{"reviewer": "agentctl", "comment": comment})
 	req, _ := http.NewRequest("POST", adminURL+"/admin/v1/approvals/"+id+"/approve", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -789,7 +789,7 @@ func cmdApprove(adminURL, id, comment string) {
 }
 
 func cmdDeny(adminURL, id, comment string) {
-	apiKey := getEnv("AGENTOS_API_KEY", "aegis-test-default-001")
+	apiKey := getEnv("AGENTOS_API_KEY", "agentos-test-default-001")
 	body, _ := marshalJSON(map[string]string{"reviewer": "agentctl", "comment": comment})
 	req, _ := http.NewRequest("POST", adminURL+"/admin/v1/approvals/"+id+"/deny", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")

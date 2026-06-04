@@ -21,8 +21,8 @@ func runBridge(t *testing.T, stdinLine string) string {
 	cmd := exec.Command("bash", "mcp-stdio-bridge.sh")
 	// 127.0.0.1:59999 is assumed closed; a short timeout keeps the test fast.
 	cmd.Env = append(cmd.Environ(),
-		"AEGISFLOW_MCP_URL=http://127.0.0.1:59999/mcp",
-		"AEGISFLOW_MCP_TIMEOUT=2",
+		"AGENTOS_MCP_URL=http://127.0.0.1:59999/mcp",
+		"AGENTOS_MCP_TIMEOUT=2",
 	)
 	cmd.Stdin = strings.NewReader(stdinLine + "\n")
 	out, err := cmd.Output()

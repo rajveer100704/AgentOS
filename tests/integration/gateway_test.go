@@ -304,7 +304,7 @@ func TestInputPolicyBlocksBadContent(t *testing.T) {
 // TestOutputPolicyBlocksBadResponse tests that output policy blocks the mock provider's response.
 func TestOutputPolicyBlocksBadResponse(t *testing.T) {
 	th := newHarness(withOutputFilters(
-		// The mock provider always returns "This is a mock response from AegisFlow..."
+		// The mock provider always returns "This is a mock response from AgentOS..."
 		policy.NewKeywordFilter("output-block", policy.ActionBlock, []string{"mock response"}),
 	))
 	defer th.close()

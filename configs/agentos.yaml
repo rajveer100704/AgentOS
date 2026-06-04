@@ -69,9 +69,9 @@ tenants:
   - id: "default"
     name: "Default Tenant"
     api_keys:
-      - key: "aegis-test-default-001"
+      - key: "agentos-test-default-001"
         role: "admin"
-      - "aegis-test-default-002"
+      - "agentos-test-default-002"
     rate_limit:
       requests_per_minute: 10
       tokens_per_minute: 100000
@@ -81,7 +81,7 @@ tenants:
   - id: "premium"
     name: "Premium Tenant"
     api_keys:
-      - key: "aegis-test-premium-001"
+      - key: "agentos-test-premium-001"
         role: "operator"
     rate_limit:
       requests_per_minute: 10
