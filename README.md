@@ -1,6 +1,8 @@
 # AgentOS
 
 Runtime Governance Platform for Autonomous AI Agents
+Secure, observe and control AI agent actions with policy enforcement,
+task-scoped credentials, evidence-chain auditing, and human approvals.
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/rajveer100704/AgentOS)](https://goreportcard.com/report/github.com/rajveer100704/AgentOS)
 [![License](https://img.shields.io/github/license/rajveer100704/AgentOS)](LICENSE)
