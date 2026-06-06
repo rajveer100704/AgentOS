@@ -15,6 +15,7 @@ bin/
 # Test
 *.test
 *.out
+*.zip
 coverage.html
 
 # Go
