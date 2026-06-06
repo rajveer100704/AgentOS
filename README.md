@@ -6,7 +6,7 @@ Runtime Governance Platform for Autonomous AI Agents
 [![License](https://img.shields.io/github/license/rajveer100704/AgentOS)](LICENSE)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/rajveer100704/AgentOS)](go.mod)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/rajveer100704/AgentOS/ci.yaml?branch=main)](https://github.com/rajveer100704/AgentOS/actions)
-[![Coverage](https://img.shields.io/badge/Coverage-78.4%25-brightgreen)](https://github.com/rajveer100704/AgentOS/actions)
+[![codecov](https://codecov.io/gh/rajveer100704/AgentOS/branch/main/graph/badge.svg)](https://codecov.io/gh/rajveer100704/AgentOS)
 
 AgentOS is a high-performance runtime governance platform that sits between autonomous AI agents and the tools, models, and systems they interact with. It provides real-time policy enforcement, task-scoped dynamic credential brokering, distributed tracing, evidence-chain auditing, and human-in-the-loop governance.
 
