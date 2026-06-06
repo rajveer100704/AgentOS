@@ -78,7 +78,7 @@ Under strict enforcement, the processing latency added by AgentOS to each action
 | Envelope creation | ~0.4 μs | ~0.5 μs | 2.5M+ |
 | Policy evaluate — allow (20 rules) | ~1.2 μs | ~1.5 μs | 847K+ |
 | Policy evaluate — block (20 rules, no match) | ~0.7 μs | ~1.0 μs | 1.4M+ |
-| Evidence chain recordr only | ~2.8 μs | ~3.5 μs | 357K+ |
+| Evidence chain record only | ~2.8 μs | ~3.5 μs | 357K+ |
 | Policy + evidence chain | ~3.4 μs | ~4.5 μs | 296K+ |
 | Full allow (policy + evidence + credential) | ~5.2 μs | ~7.0 μs | 194K+ |
 | Review path (policy + queue submit) | ~1.3 μs | ~1.8 μs | 779K+ |
