@@ -88,6 +88,28 @@ For complete test profiles, refer to [docs/PERFORMANCE.md](docs/PERFORMANCE.md) 
 
 ---
 
+## Deployment & Observability
+
+### Grafana Dashboard
+
+![Grafana Dashboard](docs/assets/grafana-dashboard.png)
+
+*Real-time metrics tracking requests/sec, P95 latency, rate-limiting, and load shedding statistics.*
+
+### Prometheus Metrics
+
+![Prometheus Metrics](docs/assets/prometheus-metrics.png)
+
+*Prometheus metric query showing policy decisions (`agentos_policy_decisions_total`) and active connections.*
+
+### Runtime Governance Console
+
+![Runtime Demo](docs/assets/runtime-demo.png)
+
+*Side-by-side terminal session showing the AgentOS edge engine handling client tool execution under a policy allow boundary.*
+
+---
+
 ## Demo
 
 ![Demo](docs/assets/demo.gif)
